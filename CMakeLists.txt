@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 2.8) # Just copying the subdirectory
+project(roomE)
+
+
+add_executable(${PROJECT_NAME} test.cpp)
+
+############## YDLIDAR SDK START#####################################
+#Include directories
+INCLUDE_DIRECTORIES(
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/YDLidar-SDK
+  ${CMAKE_SOURCE_DIR}/YDLidar-SDK/src
+  ${CMAKE_CURRENT_BINARY_DIR}/YDLidar-SDK
+)
+#Add YDLIDAR SDK sub project
+add_subdirectory(YDLidar-SDK)
+
+#Link your project to ydlidar_sdk library.
+target_link_libraries(${PROJECT_NAME} ydlidar_sdk)
+
+############## YDLIDAR SDK END#####################################
+
