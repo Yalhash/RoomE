@@ -32,29 +32,11 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 #include "CYdLidar.h"
+#include "scanData.h"
 #include <iostream>
 #include <string>
 #include <algorithm>
 #include <cctype>
-
-#if defined(_MSC_VER)
-#pragma comment(lib, "ydlidar_sdk.lib")
-#endif
-
-/**
- * @brief ydlidar test
- * @param argc
- * @param argv
- * @return
- * @par Flow chart
- * Step1: instance CYdLidar.\n
- * Step2: set paramters.\n
- * Step3: initialize SDK and LiDAR.(::CYdLidar::initialize)\n
- * Step4: Start the device scanning routine which runs on a separate thread and enable motor.(::CYdLidar::turnOn)\n
- * Step5: Get the LiDAR Scan Data.(::CYdLidar::doProcessSimple)\n
- * Step6: Stop the device scanning thread and disable motor.(::CYdLidar::turnOff)\n
- * Step7: Uninitialize the SDK and Disconnect the LiDAR.(::CYdLidar::disconnecting)\n
- */
 
 // return True on success, false on failure
 bool setup_lidar_settings(CYdLidar& laser) {
@@ -70,6 +52,7 @@ bool setup_lidar_settings(CYdLidar& laser) {
     return false;
   }
 
+  // from datasheet
   int baudrate = 115200;
   bool isSingleChannel = true;
   float frequency = 8.0;
@@ -144,11 +127,7 @@ bool setup_lidar_settings(CYdLidar& laser) {
 }
 
 int main(int argc, char *argv[]) {
-  printf("__   ______  _     ___ ____    _    ____  \n");
-  printf("\\ \\ / /  _ \\| |   |_ _|  _ \\  / \\  |  _ \\ \n");
-  printf(" \\ V /| | | | |    | || | | |/ _ \\ | |_) | \n");
-  printf("  | | | |_| | |___ | || |_| / ___ \\|  _ <  \n");
-  printf("  |_| |____/|_____|___|____/_/   \\_\\_| \\_\\ \n");
+  printf("starting\n");
   printf("\n");
   fflush(stdout);
   ydlidar::os_init();
@@ -168,11 +147,37 @@ int main(int argc, char *argv[]) {
 
   LaserScan scan;
 
+/*
+Start angle for the laser scan [rad]. 0 is forward and angles are measured clockwise when viewing YDLIDAR from the
+top.
+• float max_angle
+Stop angle for the laser scan [rad]. 0 is forward and angles are measured clockwise when viewing YDLIDAR from the
+top.
+• float angle_increment
+angle resoltuion [rad]
+• float time_increment
+Scan resoltuion [s].
+• float scan_time
+Time between scans.
+• float min_range
+Minimum range [m].
+• float max_range
+*/
+
+  float curr_x = 0.0f;
+  float curr_y = 0.0f;
+
+  ScanData sc;
+  sc.x = curr_x;
+  sc.y = curr_y;
+
   while (ret && ydlidar::os_isOk()) {
     if (laser.doProcessSimple(scan)) {
       fprintf(stdout, "Scan received[%llu]: %u ranges is [%f]Hz\n",
               scan.stamp,
               (unsigned int)scan.points.size(), 1.0 / scan.config.scan_time);
+      sc.points = scan.points;
+      printf(" min_angle: %f\n", scan.config.angle_increment);
       fflush(stdout);
     } else {
       fprintf(stderr, "Failed to get Lidar Data\n");
@@ -181,6 +186,7 @@ int main(int argc, char *argv[]) {
 
   }
 
+  printf("sc points: %d", sc.points.size());
   laser.turnOff();
   laser.disconnecting();
 
