@@ -31,12 +31,23 @@
 *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
-#include "CYdLidar.h"
-#include "scanData.h"
+// standard libs
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <array>
 #include <cctype>
+// MRPT includes
+#include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/slam/CICP.h>
+// Lidar includes
+#include "CYdLidar.h"
+// local includes
+#include "scanData.h"
+
+// using namespace mrpt;
+// using namespace mrpt::slam;
+// using namespace mrpt::obs;
 
 // return True on success, false on failure
 bool setup_lidar_settings(CYdLidar& laser) {
@@ -48,7 +59,7 @@ bool setup_lidar_settings(CYdLidar& laser) {
     port = ports.begin()->second;
   } else {
     // print size in case multiple 
-    printf("List of lidar ports was of size: %d, exiting.", ports.size()); 
+    printf("List of lidar ports was of size: %d, exiting.\n", ports.size()); 
     return false;
   }
 
@@ -126,6 +137,27 @@ bool setup_lidar_settings(CYdLidar& laser) {
 
 }
 
+mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan) {
+    mrpt::obs::CObservation2DRangeScan resultScan;
+    size_t scanSize = rawScan.points.size();
+    // Assuming ranges all are valid
+    char*  valid  = new char[scanSize];
+    for (size_t i = 0; i < scanSize; ++i) valid[i] = 1;
+
+    // NOTE: We may want to move this instead
+    // copy the vector elements into our new array
+    float* ranges = new float[scanSize];
+    std::transform(rawScan.points.begin(), rawScan.points.end(), ranges,
+            [](const LaserPoint& lp){return lp.range;});
+
+
+    resultScan.loadFromVectors(scanSize, ranges, valid);
+
+    resultScan.aperture = M_PI*2; // This is a 360 deg lidar.
+
+    return resultScan;
+}
+
 int main(int argc, char *argv[]) {
   printf("starting\n");
   printf("\n");
@@ -134,7 +166,10 @@ int main(int argc, char *argv[]) {
 
 
   CYdLidar laser;
-  setup_lidar_settings(laser);
+  if (!setup_lidar_settings(laser)) {
+    printf("Lidar settings setup failed, Exiting\n");
+    return 1;
+  }
 
   bool ret = laser.initialize();
 
@@ -167,17 +202,15 @@ Minimum range [m].
   float curr_x = 0.0f;
   float curr_y = 0.0f;
 
-  ScanData sc;
-  sc.x = curr_x;
-  sc.y = curr_y;
 
   while (ret && ydlidar::os_isOk()) {
     if (laser.doProcessSimple(scan)) {
       fprintf(stdout, "Scan received[%llu]: %u ranges is [%f]Hz\n",
               scan.stamp,
               (unsigned int)scan.points.size(), 1.0 / scan.config.scan_time);
-      sc.points = scan.points;
-      printf(" min_angle: %f\n", scan.config.angle_increment);
+      auto res = getMRPTRangeScanFromScanData(scan);
+      printf("convertedThingSize: %d\n", res.getScanSize());
+
       fflush(stdout);
     } else {
       fprintf(stderr, "Failed to get Lidar Data\n");
@@ -186,7 +219,6 @@ Minimum range [m].
 
   }
 
-  printf("sc points: %d", sc.points.size());
   laser.turnOff();
   laser.disconnecting();
 

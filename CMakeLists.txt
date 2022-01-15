@@ -20,3 +20,10 @@ target_link_libraries(${PROJECT_NAME} ydlidar_sdk)
 
 ############## YDLIDAR SDK END#####################################
 
+
+############## MRPT START######################################### 
+find_package(MRPT 1.5 COMPONENTS obs slam)
+message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+message(STATUS "MRPT_LIBRARIES: ${MRPT_LIBRARIES}")
+target_link_libraries(${PROJECT_NAME} ${MRPT_LIBRARIES})
+############## MRPT END###########################################
