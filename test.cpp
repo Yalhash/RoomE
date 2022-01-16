@@ -38,7 +38,6 @@
 #include <array>
 #include <cctype>
     // MRPT includes
-#include <mrpt/gui.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/slam/CICP.h>
 #include <mrpt/math/utils.h>
@@ -195,9 +194,9 @@
 
         auto scan1 = getMRPTRangeScanFromScanData(scan);
 
-        // std::string pause_str;
-        // std::cout << "enter to take a second scan" << std::endl;
-        // std::cin >> pause_str;
+        std::string pause_str;
+        std::cout << "enter to take a second scan" << std::endl;
+        std::cin >> pause_str;
 
         if (!laser.doProcessSimple(scan)) {
             fprintf(stderr, "Failed to get Lidar Data\n");
