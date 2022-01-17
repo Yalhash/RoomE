@@ -22,32 +22,35 @@
 *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
 *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-    *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-    *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-    *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-    *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-    *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-    *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    *  POSSIBILITY OF SUCH DAMAGE.
-    *********************************************************************/
-    // standard libs
+*  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+*  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+*  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+*  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+*  POSSIBILITY OF SUCH DAMAGE.
+*********************************************************************/
+// standard libs
 #include <iostream>
 #include <string>
 #include <algorithm>
 #include <array>
+#include <unistd.h>
 #include <cctype>
-    // MRPT includes
+// MRPT includes
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/slam/CICP.h>
 #include <mrpt/math/utils.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+//#include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/poses/CPose2D.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPosePDF.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
-    // Lidar includes
+// Lidar includes
 #include "CYdLidar.h"
-    // local includes
+// local includes
 #include "scanData.h"
 
 
@@ -68,7 +71,7 @@
       // from datasheet
       int baudrate = 115200;
       bool isSingleChannel = true;
-      float frequency = 8.0;
+      float frequency = 7.0; // ?? 8.0;
 
       if (!ydlidar::os_isOk()) {
         return false;
@@ -93,7 +96,7 @@
       optval = YDLIDAR_TYPE_SERIAL;
       laser.setlidaropt(LidarPropDeviceType, &optval, sizeof(int));
       /// sample rate
-      optval = isSingleChannel ? 3 : 4;
+      optval = 3;
       laser.setlidaropt(LidarPropSampleRate, &optval, sizeof(int));
       /// abnormal count
       optval = 4;
@@ -101,8 +104,9 @@
 
       //////////////////////bool property/////////////////
       /// fixed angle resolution
-      bool b_optvalue = false;
+      bool b_optvalue = true; // TODO CHECK THIS AGAIN
       laser.setlidaropt(LidarPropFixedResolution, &b_optvalue, sizeof(bool));
+      b_optvalue = false; // TODO CHECK THIS AGAIN
       /// rotate 180
       laser.setlidaropt(LidarPropReversion, &b_optvalue, sizeof(bool));
       /// Counterclockwise
@@ -128,9 +132,9 @@
       f_optvalue = -180.0f;
       laser.setlidaropt(LidarPropMinAngle, &f_optvalue, sizeof(float));
       /// unit: m
-      f_optvalue = 64.f;
+      f_optvalue = 8.f;
       laser.setlidaropt(LidarPropMaxRange, &f_optvalue, sizeof(float));
-      f_optvalue = 0.05f;
+      f_optvalue = 0.10f;
       laser.setlidaropt(LidarPropMinRange, &f_optvalue, sizeof(float));
       /// unit: Hz
       laser.setlidaropt(LidarPropScanFrequency, &frequency, sizeof(float));
@@ -139,12 +143,15 @@
 
     }
 
-    mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan) {
+    mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan, mrpt::poses::CPose3D* p = NULL) {
         mrpt::obs::CObservation2DRangeScan resultScan;
         size_t scanSize = rawScan.points.size();
         // Assuming ranges all are valid
         char*  valid  = new char[scanSize];
-        for (size_t i = 0; i < scanSize; ++i) valid[i] = 1;
+        for (size_t i = 0; i < scanSize; ++i) {
+		if (rawScan.points[i].range != 0.0f) valid[i] = 1;
+		else valid[i] = 0;
+	}
 
         // copy the vector elements into our new array
         // NOTE: We may want to move this instead of copy for speed
@@ -156,6 +163,9 @@
         resultScan.loadFromVectors(scanSize, ranges, valid);
 
         resultScan.aperture = M_PI*2; // This is a 360 deg lidar.
+	if (p) {
+		resultScan.setSensorPose(*p);
+	}
 
         return resultScan;
     }
@@ -186,32 +196,17 @@
 
 
 
+	sleep(2); // TODO remember if necessary
+
         if (!laser.doProcessSimple(scan)) {
             fprintf(stderr, "Failed to get Lidar Data\n");
             fflush(stderr);
             return 1;
         }
-
+	
         auto scan1 = getMRPTRangeScanFromScanData(scan);
-
-        std::string pause_str;
-        std::cout << "enter to take a second scan" << std::endl;
-        std::cin >> pause_str;
-
-        if (!laser.doProcessSimple(scan)) {
-            fprintf(stderr, "Failed to get Lidar Data\n");
-            fflush(stderr);
-            return 1;
-        }
-        auto scan2 = getMRPTRangeScanFromScanData(scan);
-
-        // Now make simplepoints map from the scans
-        mrpt::maps::CSimplePointsMap m1, m2;
-
-        m1.insertObservation(&scan1);
-        m2.insertObservation(&scan2);
-
-
+        mrpt::maps::CSimplePointsMap baseMap, currMap;
+        baseMap.insertObservation(&scan1);
 
         // set icp alg parameters
         mrpt::slam::CICP ICP;
@@ -220,59 +215,58 @@
         
         // TODO: find out units and perhaps alter these default settings
         ICP.options.maxIterations = 100;
-        ICP.options.thresholdAng = mrpt::utils::DEG2RAD(10.0f);
-        ICP.options.thresholdDist = 0.75f;
+        ICP.options.thresholdAng = mrpt::utils::DEG2RAD(5.0f);
+        ICP.options.thresholdDist = 0.5f;
         ICP.options.ALFA = 0.5f;
-        ICP.options.smallestThresholdDist = 0.05f;
+        ICP.options.smallestThresholdDist = 0.03f;
         ICP.options.doRANSAC = false;
-
-        // ICP.options.dumpToConsole();
-        
-
-        // initial pose (position and orientation)
-        mrpt::poses::CPose2D initialPose(0.0f, 0.0f, (float)mrpt::utils::DEG2RAD(0.0f));
         float runtime;
 
-        // align the two maps (the main algorithm)
-        mrpt::poses::CPosePDF::Ptr pdf = ICP.Align(&m1, &m2, initialPose, &runtime, &info);
-        printf(
-            "ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n "
-            "-> ",
-            runtime * 1000, info.nIterations,
-            runtime * 1000.0f / info.nIterations,
-            info.goodness * 100);
-        std::cout << "Mean of estimation: " << pdf->getMeanVal() << std::endl << std::endl;
-
-        mrpt::poses::CPosePDFGaussian gPdf;
-        gPdf.copyFrom(*pdf);
-        std::cout << "Covariance of estimation: " << std::endl << gPdf.cov << std::endl;
-        std::cout << " std(x): " << sqrt(gPdf.cov(0, 0)) << std::endl;
-        std::cout << " std(y): " << sqrt(gPdf.cov(1, 1)) << std::endl;
-        std::cout << " std(phi): " << mrpt::utils::RAD2DEG(sqrt(gPdf.cov(2, 2))) << " (deg)" << std::endl;
 
 
-        // Saving result:
-        std::cout << "-> Saving reference map as out/scan1.txt" << std::endl;
-        m1.save2D_to_text_file("scan1.txt");
+	mrpt::poses::CPose2D currentPose;
+	while (true) {
+		std::string user_input, y, phi;
+		std::cout << "enter \"x y phi\" change relative to the last pose" << std::endl;
+		std::cout << "or enter \"s <filename>\" to save the current map to a file" << std::endl;
+		std::cout << "or enter \"q\" to quit" << std::endl;
+		std::cin >> user_input;
+		if (user_input == "q") {
+			break;
+		} else if (user_input == "s") {
+			std::cin >> user_input;
+			// save to filename
+			std::cout << "-> Saving current map as out/" << user_input << std::endl;
+			baseMap.save2D_to_text_file(user_input);
+		} else {
+			std::cin >> y >> phi;
+			mrpt::poses::CPose2D poseDelta(std::stof(user_input),std::stof(y), std::stof(phi));
+			currentPose += poseDelta;
+			auto cPose3D = mrpt::poses::CPose3D(currentPose);
+			if (!laser.doProcessSimple(scan)) {
+			    fprintf(stderr, "Failed to get Lidar Data\n");
+			    fflush(stderr);
+			    return 1;
+			}
+			auto currScan = getMRPTRangeScanFromScanData(scan, &cPose3D);
+			currMap.insertObservation(&currScan);
+			mrpt::poses::CPosePDF::Ptr pdf = ICP.Align(&baseMap, &currMap, currentPose, &runtime, &info);
+			printf(
+			    "ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n "
+			    "-> ",
+			    runtime * 1000, info.nIterations,
+			    runtime * 1000.0f / info.nIterations,
+			    info.goodness * 100);
+			std::cout << "Mean of estimation: " << pdf->getMeanVal() << std::endl << std::endl;
 
-        std::cout << "-> Saving map to align as out/scan2.txt" << std::endl;
-        m2.save2D_to_text_file("scan2.txt");
+			mrpt::poses::CPosePDFGaussian gPdf;
+			gPdf.copyFrom(*pdf);
 
-        std::cout << "-> Saving transformed map to align as out/scan2_trans.txt" << std::endl;
-        auto m2_trans = m2;
-        m2_trans.changeCoordinatesReference(gPdf.mean);
-        m2_trans.save2D_to_text_file("scan2_trans.txt");
-
-        mrpt::math::CMatrixFloat COV22 = mrpt::math::CMatrixFloat(mrpt::math::CMatrixDouble(gPdf.cov));
-        COV22.setSize(2, 2);
-        mrpt::math::CVectorFloat MEAN2D(2);
-        MEAN2D[0] = gPdf.mean.x();
-        MEAN2D[1] = gPdf.mean.y();
-        {
-            std::ofstream f("view_ellip.m");
-            f << mrpt::math::MATLAB_plotCovariance2D(COV22, MEAN2D, 3.0f);
-        }
-
+			currMap.changeCoordinatesReference(gPdf.mean);
+			baseMap.fuseWith(&currMap);
+			currMap.clear();
+		}
+	}
 
     laser.turnOff();
     laser.disconnecting();
