@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8) # Just copying the subdirectory
 project(roomE)
 
-
+# NOTE: Add cpp files here:
 add_executable(${PROJECT_NAME} test.cpp)
 
 ############## YDLIDAR SDK START#####################################
