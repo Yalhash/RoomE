@@ -18,7 +18,7 @@
 // Lidar includes
 #include "CYdLidar.h"
 // local includes
-#include "scanData.h"
+#include "ArduinoSerial.h"
 
 // return True on success, false on failure
 bool setup_lidar_settings(CYdLidar& laser) {
