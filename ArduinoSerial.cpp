@@ -115,3 +115,31 @@ bool ArduinoSerial::_write_char(char c) {
     }
     return true;
 }
+
+bool ArduinoSerial::write_string(const std::string& str) {
+	ssize_t n;
+	const char* c_buf = str.c_str();
+	if ((n = write(usb_desc, c_buf, str.size())) == -1) {
+		fprintf(stderr, "write() failed: %s\n", strerror(errno));
+		return false;
+	}
+    return true;
+}
+
+std::string ArduinoSerial::read_string() {
+    char buf[100]; // NOTE: Arbitrary
+	int n;
+
+	while (1) {
+		if ((n = read(usb_desc, buf, 50)) == -1) {
+			if (errno != EAGAIN) {
+				fprintf(stderr, "read() failed: (%d) %s\n", errno, strerror(errno));
+				return "";
+			}
+			// errno == EAGAIN, loop around and read again
+		} else if (n != 0) {
+			return std::string(buf); // stop reading
+		}
+		// read 0 bytes, loop around an read again
+	}
+}

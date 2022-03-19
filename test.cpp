@@ -174,7 +174,7 @@ int demo() {
     
     // TODO: find out units and perhaps alter these default settings
     ICP.options.maxIterations = 100;
-    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(5.0f);
+    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(10.0f);
     ICP.options.thresholdDist = 0.5f;
     ICP.options.ALFA = 0.5f;
     ICP.options.smallestThresholdDist = 0.03f;
