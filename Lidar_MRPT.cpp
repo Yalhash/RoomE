@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <array>
-#include <unordered_map>
+#include <map>
 #include <unistd.h>
 #include <cctype>
 
@@ -11,7 +11,7 @@
 namespace {
     // return True on success, false on failure
     bool setup_lidar_settings(CYdLidar& laser) {
-        std::unordered_map<std::string, std::string> ports = ydlidar::lidarPortList();
+        std::map<std::string, std::string> ports = ydlidar::lidarPortList();
         std::string port;
         
         // use auto detect and crash out if it fails
@@ -142,13 +142,13 @@ bool Lidar_MRPT::initialize() {
     return true;
 }
 
-mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan(mrpt::poses::CPose3D* p = nullptr) {
+mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan(mrpt::poses::CPose3D* p) {
     LaserScan CYscan;
 
     if (!laser.doProcessSimple(CYscan)) {
         fprintf(stderr, "Failed to get Lidar Data\n");
         fflush(stderr);
-        return 1;
+        return mrpt::obs::CObservation2DRangeScan();
     }
 
     return getMRPTRangeScanFromScanData(CYscan, p);
