@@ -11,14 +11,27 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string>
 
 bool ArduinoSerial::usb_open() {
 	int bits;
 	struct termios term;
 	struct serial_struct kernel_serial_settings;
+    // try opening dev/ttyUSB0, 1, 2, 3, 4
+    bool found = false;
+    for (int i = 0; i < 4; ++i) {
+        file_name = serial_base + std::to_string(i);
+        if ((usb_desc = open(file_name.c_str(), 
+                        O_RDWR | O_NONBLOCK | O_NOCTTY )
+                    ) != -1) {
+            found = true;
+            break;
+        }
 
-	if ((usb_desc = open(file_name.c_str(), O_RDWR | O_NONBLOCK | O_NOCTTY )) == -1) {
-		fprintf(stderr, "open(%s) failed: %s\n", file_name.c_str(), strerror(errno));
+    }
+
+    if (!found) {
+		fprintf(stderr, "opening USB connection failed: %s\n", strerror(errno));
         usb_desc = -1;
 		return false;
 	}

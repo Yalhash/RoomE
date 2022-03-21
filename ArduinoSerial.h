@@ -10,8 +10,7 @@
 
 class ArduinoSerial {
 public:
-    ArduinoSerial(const std::string& serial_name = "/dev/ttyUSB0") : 
-        file_name(serial_name), usb_desc(-1) {}
+    ArduinoSerial() : usb_desc(-1) {}
 
     bool usb_open();
     bool _write_char(char c);
@@ -20,6 +19,7 @@ public:
     std::string read_string();
     bool usb_close();
 private:
+    const std::string serial_base = "/dev/ttyUSB";
     std::string file_name;
     int usb_desc;
     static const auto SERIAL_BAUDRATE = B115200;

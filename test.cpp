@@ -1,9 +1,8 @@
 ﻿// standard libs
 #include <iostream>
 #include <string>
-#include <algorithm>
-#include <array>
-#include <unistd.h>
+// #include <algorithm>
+// #include <unistd.h>
 #include <cctype>
 // MRPT includes
 #include <mrpt/obs/CObservation2DRangeScan.h>
