@@ -38,3 +38,19 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
     // update the current map 
     running_map.fuseWith(&curr_map);
 }
+
+
+void RoomeMap::save_to_text_file(const std::string& filename) { 
+    running_map.save2D_to_text_file(filename);
+}
+
+
+mrpt::poses::CPose2D RoomeMap::get_pose() {
+    return current_pose; 
+}
+
+mrpt::maps::COccupancyGridMap2D RoomeMap::get_grid_map() {
+    mrpt::maps::COccupancyGridMap2D result;
+    result.loadFromSimpleMap(running_map);
+    return result;
+}
