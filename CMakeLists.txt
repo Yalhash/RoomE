@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 2.8) # Just copying the subdirectory
 project(roomE)
 
 # NOTE: Add cpp files here:
-add_executable(${PROJECT_NAME} test.cpp ArduinoSerial.cpp Lidar_MRPT.cpp)
+add_executable(${PROJECT_NAME} 
+    test.cpp 
+    ArduinoSerial.cpp 
+    Lidar_MRPT.cpp
+    RoomeMap.cpp
+    )
 
 ############## YDLIDAR SDK START#####################################
 #Include directories
