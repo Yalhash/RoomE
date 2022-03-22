@@ -97,7 +97,7 @@ namespace {
         return true;
     }
 
-    mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan, mrpt::poses::CPose3D* p) {
+    mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan) {
         mrpt::obs::CObservation2DRangeScan resultScan;
         size_t scanSize = rawScan.points.size();
         // Assuming ranges all are valid
@@ -115,9 +115,6 @@ namespace {
 
         resultScan.loadFromVectors(scanSize, ranges, valid);
         resultScan.aperture = M_PI*2; // This is a 360 deg lidar.
-        if (p) {
-            resultScan.setSensorPose(*p);
-        }
 
         return resultScan;
     }
@@ -142,7 +139,7 @@ bool Lidar_MRPT::initialize() {
     return true;
 }
 
-mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan(mrpt::poses::CPose3D* p) {
+mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan() {
     LaserScan CYscan;
 
     if (!laser.doProcessSimple(CYscan)) {
@@ -151,7 +148,7 @@ mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan(mrpt::poses::CPose3D* p) {
         return mrpt::obs::CObservation2DRangeScan();
     }
 
-    return getMRPTRangeScanFromScanData(CYscan, p);
+    return getMRPTRangeScanFromScanData(CYscan);
 }
 
 
