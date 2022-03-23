@@ -1,5 +1,6 @@
 #include "RoomeMap.h"
 #include <mrpt/poses/CPosePDF.h>
+#include <mrpt/poses/CPose3D.h>
 
 
 RoomeMap::RoomeMap() {
@@ -31,12 +32,14 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
     mrpt::poses::CPosePDFGaussian g_pdf;
     g_pdf.copyFrom(*pdf);
     
-    // correct our scan
-    curr_map.changeCoordinatesReference(g_pdf.mean);
     // update current pose to where we think we are
     current_pose += g_pdf.mean; 
-    // update the current map 
+    // correct our scan
+    curr_map.changeCoordinatesReference(current_pose);
+    // update the current map and grid
     running_map.fuseWith(&curr_map);
+    mrpt::poses::CPose3D current_3D(current_pose);
+    running_grid.insertObservation(&scan,&current_3D);
 }
 
 
@@ -50,7 +53,5 @@ mrpt::poses::CPose2D RoomeMap::get_pose() {
 }
 
 mrpt::maps::COccupancyGridMap2D RoomeMap::get_grid_map() {
-    mrpt::maps::COccupancyGridMap2D result;
-    result.loadFromSimpleMap(running_map);
-    return result;
+    return running_grid;
 }

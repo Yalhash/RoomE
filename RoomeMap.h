@@ -24,6 +24,7 @@ private:
     mrpt::poses::CPose2D current_pose;
     mrpt::slam::CICP ICP;
     mrpt::maps::CSimplePointsMap running_map;
+    mrpt::maps::COccupancyGridMap2D running_grid;
 };
 
 #endif
