@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     ArduinoSerial.cpp 
     Lidar_MRPT.cpp
     RoomeMap.cpp
+    RoomeNav.cpp
     )
 
 ############## YDLIDAR SDK START#####################################
@@ -27,8 +28,11 @@ target_link_libraries(${PROJECT_NAME} ydlidar_sdk)
 
 
 ############## MRPT START######################################### 
-find_package(MRPT 1.5 COMPONENTS obs slam)
+find_package(MRPT 1.5 COMPONENTS obs slam nav)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 message(STATUS "MRPT_LIBRARIES: ${MRPT_LIBRARIES}")
 target_link_libraries(${PROJECT_NAME} ${MRPT_LIBRARIES})
 ############## MRPT END###########################################
+
+#make sure we run C++ 17
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
