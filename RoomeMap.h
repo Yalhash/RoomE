@@ -15,8 +15,8 @@ public:
                             const mrpt::poses::CPose2D& pose_delta_approx);
 
     void save_to_text_file(const std::string& filename);
-    mrpt::poses::CPose2D get_pose();
 
+    mrpt::poses::CPose2D get_pose();
 
     mrpt::maps::COccupancyGridMap2D get_grid_map();
 

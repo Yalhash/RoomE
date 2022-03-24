@@ -100,7 +100,7 @@ namespace {
     mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan) {
         mrpt::obs::CObservation2DRangeScan resultScan;
         size_t scanSize = rawScan.points.size();
-        // Assuming ranges all are valid
+        // Zero ranges are not valid
         char*  valid  = new char[scanSize];
         for (size_t i = 0; i < scanSize; ++i) {
             if (rawScan.points[i].range != 0.0f) valid[i] = 1;
@@ -131,7 +131,9 @@ bool Lidar_MRPT::initialize() {
         
     if (ret) {
         ret = laser.turnOn();
-    } else {
+    } 
+
+    if (!ret){
         fprintf(stderr, "%s\n", laser.DescribeError());
         fflush(stderr);
         return false;
@@ -145,7 +147,7 @@ mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan() {
     if (!laser.doProcessSimple(CYscan)) {
         fprintf(stderr, "Failed to get Lidar Data\n");
         fflush(stderr);
-        return mrpt::obs::CObservation2DRangeScan();
+        return mrpt::obs::CObservation2DRangeScan(); //TODO switch this to optional or something
     }
 
     return getMRPTRangeScanFromScanData(CYscan);
