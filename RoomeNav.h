@@ -19,6 +19,4 @@ public:
 private:
     mrpt::nav::PlannerSimple2D planner;
 };
-
-
 #endif
