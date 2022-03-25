@@ -29,11 +29,12 @@ int demo() {
     lidar.initialize();
 	
     RoomeMap r_map;
-    
+    mrpt::maps::COccupancyGridMap2D occ_grid;
+
     // Insert the base observation
     auto scan1 = lidar.scan();
     r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,0));
-
+    occ_grid = r_map.get_grid_map();
     while (true) {
         std::string user_input, y, phi;
         std::cout << "enter \"x y phi\" change relative to the last pose" << std::endl;
@@ -54,7 +55,7 @@ int demo() {
             // Take scan 
             auto currScan = lidar.scan();
             // insert the scan and update the map
-            r_map.insert_observation(currScan, pose_delta);
+            r_map.insert_observation(currScan, pose_delta);  
         }
     }
     lidar.tearDown();
