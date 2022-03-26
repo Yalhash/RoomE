@@ -3,13 +3,14 @@ project(roomE)
 
 # NOTE: Add cpp files here:
 add_executable(${PROJECT_NAME} 
-    test.cpp 
-    #img_test.cpp
+    # test.cpp 
+    testing_environments.cpp
     ArduinoSerial.cpp 
     Lidar_MRPT.cpp
     RoomeMap.cpp
     RoomeNav.cpp
     DriveTrain.cpp
+    TestEnv.cpp
     )
 
 ############## YDLIDAR SDK START#####################################
