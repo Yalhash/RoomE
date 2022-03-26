@@ -20,11 +20,12 @@ int main() {
             std::cin >> y >> phi;
             mrpt::poses::CPose2D pose_delta(std::stof(user_input),std::stof(y), std::stof(phi));
 
-            // Take scan 
+            // Update location exactly 
+            env.update_pose(r_map.get_pose());
+            // Take scan
             auto currScan = env.scan();
             // insert the scan and update the map
             r_map.insert_observation(currScan, pose_delta);  
-            env.update_pose(r_map.get_pose());
             // save scan
             std::cout << r_map.get_pose() << std::endl;
             std::string output_name = "scan_" + std::to_string(count);
