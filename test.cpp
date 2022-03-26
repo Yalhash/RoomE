@@ -19,6 +19,53 @@
 #include "Lidar_MRPT.h"
 #include "RoomeMap.h"
 
+//navtesting includes
+#include <mrpt/gui/CDisplayWindow.h>
+#include <mrpt/system/filesystem.h>
+
+using namespace mrpt;
+using namespace mrpt::maps;
+using namespace mrpt::random;
+using namespace mrpt::gui;
+using namespace mrpt::math;
+using namespace mrpt::img;
+using namespace std;
+
+int navTesting(){
+    filename = "assets/Env_asset2.png";
+    printf("starting\n");
+    printf("\n");
+    fflush(stdout);
+
+    mrpt::maps::COccupancyGridMap2D occ_grid;
+	    
+
+    
+    if (occ_grid.loadFromBitmapFile(filename, 0.5f)){
+    	cout << "Building Voronoi diagram...\n";
+        occ_grid.buildVoronoiDiagram(0.5f, 0.3f);
+
+        CImage img_grid;
+        occ_grid.getAsImage(img_grid);
+
+        CImage img_voronoi;
+        CMatrixDouble mat_voronoi;
+        occ_grid.getVoronoiDiagram().getAsMatrix(mat_voronoi);
+        img_voronoi.setFromMatrix(mat_voronoi, false /* do normalization */);
+
+        // Show results:
+        CDisplayWindow win1("Grid map");
+        win1.showImage(img_grid);
+
+        CDisplayWindow win2("Voronoi map");
+        win2.showImage(img_voronoi);
+
+        mrpt::system::pause();
+    }
+
+
+
+}
 
 int demo() {
     printf("starting\n");
@@ -29,7 +76,6 @@ int demo() {
     lidar.initialize();
 	
     RoomeMap r_map;
-    mrpt::maps::COccupancyGridMap2D occ_grid;
 
     // Insert the base observation
     auto scan1 = lidar.scan();
@@ -47,7 +93,7 @@ int demo() {
             std::cin >> user_input;
             // save to filename
             std::cout << "-> Saving current map as out/" << user_input << std::endl;
-            r_map.save_to_text_file(user_input);
+            r_map.save_points_to_file(user_input);
         } else {
             std::cin >> y >> phi;
             mrpt::poses::CPose2D pose_delta(std::stof(user_input),std::stof(y), std::stof(phi));
@@ -63,5 +109,5 @@ int demo() {
 }
 
 int main(int argc, char *argv[]) {
-    return demo();
+    return navTesting();
 }
