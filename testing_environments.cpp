@@ -29,7 +29,7 @@ int main() {
             std::cout << r_map.get_pose() << std::endl;
             std::string output_name = "scan_" + std::to_string(count);
             std::cout << "-> Saving current map as build/" << output_name << std::endl;
-            r_map.save_to_text_file(output_name);
+            r_map.save_grid_to_file(output_name);
         }
         ++count;
     }
