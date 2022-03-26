@@ -4,12 +4,12 @@
 
 
 RoomeMap::RoomeMap() {
-    // TODO: find out units and perhaps alter these default settings
+    // TODO: update in insert_observation based on how much we've moved
     ICP.options.maxIterations = 100;
-    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(5.0f);
-    ICP.options.thresholdDist = 0.5f;
+    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(10.0f);
+    ICP.options.thresholdDist = 0.75;
     ICP.options.ALFA = 0.5f;
-    ICP.options.smallestThresholdDist = 0.03f;
+    ICP.options.smallestThresholdDist = 0.05f;
     ICP.options.doRANSAC = false;
     ICP.options.ICP_algorithm = mrpt::slam::icpClassic;
 
@@ -21,7 +21,6 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
 
     mrpt::maps::CSimplePointsMap curr_map;
     curr_map.insertObservation(&scan);
-
     //NOTE: may want run info in future to check goodness etc.
     mrpt::poses::CPosePDF::Ptr pdf = ICP.Align(
             &running_map, 
@@ -34,6 +33,7 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
     
     // update current pose to where we think we are
     current_pose += g_pdf.mean; 
+    std::cout << "cpose: " << current_pose << " g_pdf: "  << g_pdf.mean << " pose_delta_approx " << pose_delta_approx<< std::endl;
     // correct our scan
     curr_map.changeCoordinatesReference(current_pose);
     // update the current map and grid
@@ -45,7 +45,7 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
 
 void RoomeMap::save_to_text_file(const std::string& filename) { 
     running_map.save2D_to_text_file(filename);
-    running_grid.saveAsBitmapFile(filename+".png");
+    running_grid.saveAsBitmapFile(filename+".bmp");
 }
 
 
