@@ -14,7 +14,8 @@ public:
     void insert_observation(const mrpt::obs::CObservation2DRangeScan& scan,
                             const mrpt::poses::CPose2D& pose_delta_approx);
 
-    void save_to_text_file(const std::string& filename);
+    void save_points_to_file(const std::string& filename);
+    void save_grid_to_file(const std::string& filename);
 
     mrpt::poses::CPose2D get_pose();
 

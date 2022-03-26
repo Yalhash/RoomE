@@ -48,7 +48,7 @@ void RoomeMap::save_points_to_file(const std::string& filename) {
 }
 
 void RoomeMap::save_grid_to_file(const std::string& filename) { 
-    running_grid.saveAsBitmapFile(filename);
+    running_grid.saveAsBitmapFile(filename + ".bmp");
 
 }
 
