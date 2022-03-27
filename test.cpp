@@ -49,8 +49,11 @@ int demo() {
             r_map.save_points_to_file(user_input);
         } else {
             std::cin >> y;
-            mrpt::math::TPoint2D move_point(std::stof(user_input),std::stof(y));
-	    auto pose_delta = d_train.move(r_map.get_pose(), move_point);
+            auto curr_pose = r_map.get_pose();
+            mrpt::math::TPoint2D move_point(
+                    curr_pose.m_coords[0] + std::stof(user_input),
+                    curr_pose.m_coords[0] + std::stof(y));
+            auto pose_delta = d_train.move(r_map.get_pose(), move_point);
 
 
             // Take scan 
