@@ -22,7 +22,7 @@ private:
     const std::string serial_base = "/dev/ttyUSB";
     std::string file_name;
     int usb_desc;
-    static const auto SERIAL_BAUDRATE = B115200;
+    static const auto SERIAL_BAUDRATE = B9600;
 };
 
 #endif

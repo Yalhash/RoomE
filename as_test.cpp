@@ -6,10 +6,16 @@
 
 int main () {
     ArduinoSerial serial;
-    serial.usb_open();
+    if (serial.usb_open()) {
+	std::cout << "Good open" << std::endl;
+    } else {
+	std::cout << "BAD open" << std::endl;
+    }
 
     while (1) {
-	std::string myStr = "<HelloWorld, 10, 5.6>";
+	    std::cout << "give input: ";
+	    std::string myStr;
+	    std::cin >> myStr;
 	serial.write_string(myStr);
         auto str = serial.read_string();
         std::cout << "Arduino sent back " << str << std::endl;

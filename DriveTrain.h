@@ -19,7 +19,7 @@ public:
     // Move RoomE from the start pose to the finish point. 
     // return the left and right wheel odometry info.
     // (Note, maybe this should return the approximate new pose.
-    std::pair<int, int> move(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish);
+    mrpt::poses::CPose2D move(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish);
 
 private:
     ArduinoSerial serial;
