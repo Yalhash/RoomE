@@ -44,7 +44,7 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
 
 
 void RoomeMap::save_points_to_file(const std::string& filename) { 
-    running_map.save2D_to_text_file(filename);
+    running_map.save2D_to_text_file(filename+".txt");
 }
 
 void RoomeMap::save_grid_to_file(const std::string& filename) { 
