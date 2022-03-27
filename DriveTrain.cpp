@@ -19,34 +19,28 @@ DriveTrain::~DriveTrain() {
 
 namespace { 
 // function to calculate distance and angle 
-    std::vector<double> distance_angle_cal(double xi,double yi, double posi, double xf, double yf){
+    std::vector<double> get_turn_angle(double xi,double yi, double curr_angle, double xf, double yf){
 
             std::vector<double> vec_str;    
-            double travel_direction_vector_x= (xf-xi); 
-            double travel_direction_vector_y= (yf-yi); 
 
-            double hor_direction_vector_x = (xi+10);   
-            double hor_direction_vector_y = (yi-yi);  
+            double delta_x= (xf-xi); 
+            double delta_y= (yf-yi); 
 
+            //Distance the roome will physically move
+            double dist= sqrt(delta_x*delta_x+delta_y*delta_y);
 
-            double distance_to_travel= sqrt(pow((xf-xi),2)+pow((yf-yi),2));  
+            //Angle we want to face towards to move
+            double goal_angle= atan2(xi*xf + yi*yf,xi*yf - yi*xf ) * (180/M_PI);
 
-            double angle_between_vector= acos((travel_direction_vector_x*hor_direction_vector_x 
-                        + travel_direction_vector_y*hor_direction_vector_y)/
-                    (sqrt(pow(travel_direction_vector_x,2)+
-                          pow(travel_direction_vector_y,2)) * 
-                     sqrt(pow(hor_direction_vector_x,2)+
-                         pow(hor_direction_vector_y,2))));
-            double angle_turn=0;
-            if(yi<=yf){
-                 angle_turn= (posi-  angle_between_vector)*(180/M_PI);
+            //How much to turn to get to the correct angle
+            double turn_angle = goal_angle - curr_angle;
+
+            //Ensure we take the shortest turn direction
+            if(turn_angle > 180){
+                 turn_angle= -(360-turn_angle);
             }       
-            else{
-
-               angle_turn= (posi- (2*M_PI - angle_between_vector))*(180/M_PI);
-            }
-            vec_str.push_back(distance_to_travel);
-            vec_str.push_back(angle_turn);
+            vec_str.push_back(dist);
+            vec_str.push_back(turn_angle);
             return vec_str;
     }
 
@@ -78,7 +72,7 @@ namespace {
 mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish) {
 
     auto coords = start.m_coords;
-    std::vector travel_data =  distance_angle_cal(coords[0],coords[1],start.phi(), finish.x, finish.y);  
+    std::vector travel_data =  get_turn_angle(coords[0],coords[1],start.phi(), finish.x, finish.y);  
 
     std::string data_send_arduino_turning ;
     std::string data_send_arduino_stright ;
@@ -86,13 +80,13 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
    
     // combine data for transfer  
     if (travel_data[1]>0){    //right trun
-        data_send_arduino_turning = "<1,0,1,0," + std::to_string(travel_data[0]) +  "," + std::to_string(travel_data[1]) + ",1>" ;   
+        data_send_arduino_turning = "<1,0,1,0,0,"+ std::to_string(travel_data[1]) + ",1>" ;   
     }
     else {                     //left turn
-        data_send_arduino_turning = "<1,0,0,0," + std::to_string(travel_data[0]) + "," +  std::to_string(travel_data[1]) + ",1>" ; 
+        data_send_arduino_turning = "<1,0,0,0,0," +  std::to_string(travel_data[1]) + ",1>" ; 
     }
 
-    data_send_arduino_stright =  "<2,0,1,0," + std::to_string(travel_data[0]) + "," +  std::to_string(travel_data[1]) + ",1>" ;  // going forward
+    data_send_arduino_stright =  "<2,0,1,0," + std::to_string(travel_data[0]) + ",0,1>" ;  // going forward
 
     std::cout << "trying to send?: " << data_send_arduino_turning << std::endl;
 
