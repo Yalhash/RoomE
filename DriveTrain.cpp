@@ -23,22 +23,41 @@ namespace {
 
             std::vector<double> vec_str;    
 
-            double delta_x= (xf-xi); 
-            double delta_y= (yf-yi); 
+            //Goal point is current location
+            if(xi == xf && yi == yf){
+                vec_str.push_back(0);
+                vec_str.push_back(0);
+                return vec_str;
+            }
+
+
+            double delta_x= math.std::abs(xf-xi); 
+            double delta_y= math.std::abs(yf-yi); 
 
             //Distance the roome will physically move
             double dist= sqrt(delta_x*delta_x+delta_y*delta_y);
 
             //Angle we want to face towards to move
-            double goal_angle= atan2(xi*xf + yi*yf,xi*yf - yi*xf ) * (180/M_PI);
+            double goal_angle = acos(delta_x/dist)* (180/M_PI);
 
-            //How much to turn to get to the correct angle
-            double turn_angle = goal_angle - curr_angle;
+            if (xi>xf){
+                goal_angle = 180 - goal_angle;
+            }
+
+            if (yi > yf){
+                goal_angle = -goal_angle;
+            }
+
+            
+
+            //How much to turn from current angle to get to the correct angle
+            double turn_angle = goal_angle - (curr_angle * (180/M_PI));
 
             //Ensure we take the shortest turn direction
             if(turn_angle > 180){
                  turn_angle= -(360-turn_angle);
             }       
+
             vec_str.push_back(dist);
             vec_str.push_back(turn_angle);
             return vec_str;
@@ -74,6 +93,9 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     auto coords = start.m_coords;
     std::vector travel_data =  get_turn_angle(coords[0],coords[1],start.phi(), finish.x, finish.y);  
 
+    std::cout << "current pose: " << start << std::endl;
+    std::cout << "travel data: " << travel_data[0] << ", " << travel_data[1] << std::endl;
+
     std::string data_send_arduino_turning ;
     std::string data_send_arduino_stright ;
     std::cout << "SPONGE0" << std::endl;
@@ -83,7 +105,7 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
         data_send_arduino_turning = "<1,0,1,0,0,"+ std::to_string(travel_data[1]) + ",1>" ;   
     }
     else {                     //left turn
-        data_send_arduino_turning = "<1,0,0,0,0," +  std::to_string(travel_data[1]) + ",1>" ; 
+        data_send_arduino_turning = "<1,0,0,0,0," +  std::to_string(-travel_data[1]) + ",1>" ; 
     }
 
     data_send_arduino_stright =  "<2,0,1,0," + std::to_string(travel_data[0]) + ",0,1>" ;  // going forward
@@ -96,13 +118,15 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     serial.write_string(data_send_arduino_turning);
 
     auto Turn_odm_str = serial.read_string();
-
+    std::cout << "Turn received: " << Turn_odm_str << std::endl;
 
     std::cout << "SPONGE4" << std::endl;
+        std::cout << "now send: " << data_send_arduino_stright << std::endl;
     serial.write_string(data_send_arduino_stright);
     std::cout << "SPONGE5" << std::endl;
     
     auto drive_odm_str = serial.read_string();
+    printf("drive odm: '%s'\n", drive_odm_str.c_str());
 
     std::vector<float> turn_odm_vector = parse_str_between_two_markers(Turn_odm_str, "<",">");
     std::vector<float> drive_odm_vector = parse_str_between_two_markers(drive_odm_str, "<",">");

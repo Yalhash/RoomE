@@ -34,6 +34,11 @@ int demo() {
     // Insert the base observation
     auto scan1 = lidar.scan();
     r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,0));
+    int count = 0;
+    std::string output_name = "scan_" + std::to_string(count);
+    std::cout << "-> Saving initial map as build/" << output_name << std::endl;
+    r_map.save_grid_to_file(output_name);
+    r_map.save_points_to_file(output_name + ".txt");
     while (true) {
         std::string user_input, y, phi;
         std::cout << "enter \"x y\" change relative to the last pose" << std::endl;
@@ -42,11 +47,6 @@ int demo() {
         std::cin >> user_input;
         if (user_input == "q") {
             break;
-        } else if (user_input == "s") {
-            std::cin >> user_input;
-            // save to filename
-            std::cout << "-> Saving current map as out/" << user_input << std::endl;
-            r_map.save_points_to_file(user_input);
         } else {
             std::cin >> y;
             auto curr_pose = r_map.get_pose();
@@ -60,6 +60,12 @@ int demo() {
             auto currScan = lidar.scan();
             // insert the scan and update the map
             r_map.insert_observation(currScan, pose_delta);  
+
+            ++count;
+            std::string output_name = "scan_" + std::to_string(count);
+            std::cout << "-> Saving current map as build/" << output_name << std::endl;
+            r_map.save_grid_to_file(output_name);
+            r_map.save_points_to_file(output_name + ".txt");
         }
     }
     lidar.tearDown();
