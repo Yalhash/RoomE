@@ -60,7 +60,7 @@ std::optional<mrpt::math::TPoint2D> RoomeNav::find_destiny(
             mrpt::math::TPoint2D ret_val(grid.idx2x(p.first), grid.idx2y(p.second));
             return  std::optional<mrpt::math::TPoint2D>{ret_val};
         // If we have found a wall, dont go further
-        } else if (std::abs(prob - 1) < 0.05){
+        } else if (std::abs(prob - 0) < 0.05){
             continue;
         }
         get_nearby_points(que, seen, p.first, p.second, 
