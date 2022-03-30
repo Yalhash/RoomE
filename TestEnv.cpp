@@ -3,7 +3,12 @@
 
 TestEnv::TestEnv(const std::string& filename) {
    
-    bool result =  virtual_grid.loadFromBitmapFile(filename, 0.5f);
+    bool result =  virtual_grid.loadFromBitmapFile(filename, 0.05f);
+    virtual_grid.insertionOptions.wideningBeamsWithDistance = true;
+}
+
+bool TestEnv::is_map_loaded() {
+    return !virtual_grid.isEmpty();
 }
 
 

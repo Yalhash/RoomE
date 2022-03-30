@@ -6,8 +6,8 @@
 RoomeMap::RoomeMap() {
     // TODO: update in insert_observation based on how much we've moved
     ICP.options.maxIterations = 100;
-    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(10.0f);
-    ICP.options.thresholdDist = 0.75;
+    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(3.0f);
+    ICP.options.thresholdDist = 0.30;
     ICP.options.ALFA = 0.5f;
     ICP.options.smallestThresholdDist = 0.05f;
     ICP.options.doRANSAC = false;
