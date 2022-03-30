@@ -48,8 +48,6 @@ namespace {
                 goal_angle = -goal_angle;
             }
 
-            
-
             //How much to turn from current angle to get to the correct angle
             double turn_angle = goal_angle - (curr_angle * (180/M_PI));
 
@@ -100,6 +98,8 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     std::string data_send_arduino_stright ;
     std::cout << "SPONGE0" << std::endl;
    
+    //Arduino follows format <State,forwards/backwards,left/right,emergencystop,distance,angle,piconfirmation>
+    //State can be 0 for standby, 1 for turn, and 2 for drive straight
     // combine data for transfer  
     if (travel_data[1]>0){    //right trun
         data_send_arduino_turning = "<1,0,1,0,0,"+ std::to_string(travel_data[1]) + ",1>" ;   
@@ -116,7 +116,6 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
 
 
     serial.write_string(data_send_arduino_turning);
-
     auto Turn_odm_str = serial.read_string();
     std::cout << "Turn received: " << Turn_odm_str << std::endl;
 
@@ -182,4 +181,26 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     // TODO move RoomE and fill left wheel and right wheel with the l/r odometry info
 
     return mrpt::poses::CPose2D(x_new, y_new, final_angle);
+}
+
+
+//TODO: test functions remove later
+    //Arduino follows format <State,forwards/backwards,left/right,emergencystop,distance,angle,piconfirmation>
+    //State can be 0 for standby, 1 for turn, and 2 for drive straight
+void DriveTrain::turn_right(){
+    serial.write_string("<1,0,1,0,0,90,1>");
+    auto Turn_odm_str = serial.read_string();
+    std::cout << "Turn received: " << Turn_odm_str << std::endl;
+}
+
+void DriveTrain::turn_left(){
+    serial.write_string("<1,0,0,0,0,90,1>");
+    auto Turn_odm_str = serial.read_string();
+    std::cout << "Turn received: " << Turn_odm_str << std::endl;
+}
+
+void DriveTrain::go_straight(){
+    serial.write_string("<2,0,0,0,0.1,0,1>");
+    auto odm_str = serial.read_string();
+    std::cout << "Straight drive odm received: " << odm_str << std::endl;
 }
