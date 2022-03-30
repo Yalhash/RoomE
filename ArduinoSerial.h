@@ -19,8 +19,7 @@ public:
     std::string read_string();
     bool usb_close();
 private:
-    const std::string serial_base = "/dev/ttyUSB";
-    std::string file_name;
+    const std::string file_name = "/dev/arduinoDTrain";
     int usb_desc;
     static const auto SERIAL_BAUDRATE = B9600;
 };
