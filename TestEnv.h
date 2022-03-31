@@ -3,6 +3,8 @@
 
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
+#include <vector> 
+#include <utility> 
 #include <mrpt/poses/CPose2D.h>
 
 class TestEnv {
@@ -14,7 +16,6 @@ public:
 private:
     mrpt::maps::COccupancyGridMap2D virtual_grid;
     mrpt::poses::CPose2D currentPosition;
-    
 };
 
 #endif

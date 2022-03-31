@@ -25,6 +25,7 @@ namespace {
     void get_nearby_points(std::deque<std::pair<int,int>>& que,
                 std::set<std::pair<int,int>>& seen,
                 int x, int y, int num_rows, int num_cols) {
+
         for (int i = -1; i <= 1; ++i) {
             for (int j = -1; j <= 1; ++j) {
                 if ((i == 0 && j == 0)  
@@ -32,7 +33,6 @@ namespace {
                    || (y + j < 0 || y + j >= num_rows)){
                   continue;
                 }
-
                 auto p = std::make_pair(x + i,y + j);
                 if (seen.find(p) == seen.end()) {
                     seen.emplace(p);
@@ -74,25 +74,26 @@ std::optional<mrpt::math::TPoint2D> RoomeNav::find_destiny(
     std::deque<std::pair<int,int>> que;
     std::set<std::pair<int,int>> seen;
     que.push_back(std::make_pair(x_ind, y_ind));
-    std::cout << "starting at: " << x_ind << ", " << y_ind << std::endl;
     int num_rows = grid.getSizeX();
     int num_cols = grid.getSizeY();
     while (!que.empty()) {
         auto p = que.front();
         que.pop_front();
-        // auto prob = find_area_uncertainty(grid, p.first, p.second, num_rows, num_cols);
-        auto prob = grid.getCell(p.first, p.second);
-        // If we have found an uncertain value, return that point
-        if (std::abs(prob - 0.5) < 0.05) { 
-            std::cout << "uncertain value found: " << p.first << ", " << p.second << std::endl;
-            mrpt::math::TPoint2D ret_val(grid.idx2x(p.first), grid.idx2y(p.second));
-            std::cout << "real value: " << grid.idx2x(p.first) << ", " << grid.idx2y(p.second) << std::endl;
-            return  std::optional<mrpt::math::TPoint2D>{ret_val};
-        // If we have found a wall (probability 0), dont go further
-        } else if (std::abs(prob) < 0.05){
+        get_nearby_points(que,seen,p.first,p.second,num_rows,num_cols);
+        auto prob = find_area_uncertainty(grid, p.first, p.second, num_rows, num_cols);
+        auto cell_prob = grid.getCell(p.first, p.second);
+        if (std::abs(cell_prob) < 0.05) {
             continue;
         }
-        get_nearby_points(que, seen, p.first, p.second, num_rows, num_cols);
+        // If we have found an uncertain value, return that point
+        if (std::abs(prob - 0.5) < 0.05) { 
+            mrpt::math::TPoint2D ret_val(grid.idx2x(p.first), grid.idx2y(p.second));
+            return  std::optional<mrpt::math::TPoint2D>{ret_val};
+        // If we have found a wall (probability 0), dont go further
+        } else if (std::abs(prob) < 0.05){ // check if the que is empty here, if it is we go to anywhere without obstacle
+            continue;
+        }
+        //get_nearby_points(que, seen, p.first, p.second, num_rows, num_cols);
     }
     // BFS out from where we are
     

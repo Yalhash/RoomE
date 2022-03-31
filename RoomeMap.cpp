@@ -1,7 +1,7 @@
 #include "RoomeMap.h"
 #include <mrpt/poses/CPosePDF.h>
 #include <mrpt/poses/CPose3D.h>
-
+#include <mrpt/gui/CDisplayWindow3D.h>
 
 RoomeMap::RoomeMap() {
     // TODO: update in insert_observation based on how much we've moved
@@ -48,8 +48,18 @@ void RoomeMap::save_points_to_file(const std::string& filename) {
 }
 
 void RoomeMap::save_grid_to_file(const std::string& filename) { 
-    running_grid.saveAsBitmapFile(filename + ".bmp");
 
+
+    for (auto& p : saved_points) {
+        int x = running_grid.x2idx(p.first);
+        int y = running_grid.y2idx(p.second);
+        for (int i = -10; i <= 10; ++i) {
+            for (int j = -10; j <= 10; ++j) {
+                running_grid.updateCell(x + i, y + j,0);
+            }
+        }
+    }
+    running_grid.saveAsBitmapFile(filename + ".bmp");
 }
 
 
@@ -59,4 +69,8 @@ mrpt::poses::CPose2D RoomeMap::get_pose() {
 
 mrpt::maps::COccupancyGridMap2D RoomeMap::get_grid_map() {
     return running_grid;
+}
+
+void RoomeMap::save_point(double x, double y) {
+    saved_points.emplace_back(std::make_pair(x, y));
 }

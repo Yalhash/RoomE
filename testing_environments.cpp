@@ -5,7 +5,7 @@
 int main() {
     RoomeMap r_map;
     RoomeNav nav;
-    TestEnv env("assets/simpleBox.png");
+    TestEnv env("assets/shapes.png");
     mrpt::poses::CPose2D virtual_pose(0,0,0);
     if (!env.is_map_loaded()) {
         std::cout << "map did not load correctly" 
@@ -21,6 +21,7 @@ int main() {
     std::cout << "-> Saving current map as build/" << output_name << std::endl;
     r_map.save_grid_to_file(output_name);
     while (true) {
+        r_map.save_point(r_map.get_pose().m_coords[0], r_map.get_pose().m_coords[1]);
         auto opt_next_point = nav.find_destiny(r_map.get_grid_map(), r_map.get_pose());
 
         if (!opt_next_point) {
@@ -85,7 +86,7 @@ int main() {
         output_name = std::to_string(count++) + "_scan" ;
         std::cout << "-> Saving current map as build/" << output_name << std::endl;
         r_map.save_grid_to_file(output_name);
-        if (count > 5) {
+        if (count > 20) {
             break;
         }
         

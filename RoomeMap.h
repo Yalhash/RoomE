@@ -5,6 +5,8 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/slam/CICP.h>
+#include <utility>
+#include <vector>
 
 class RoomeMap {
 public:
@@ -20,12 +22,14 @@ public:
     mrpt::poses::CPose2D get_pose();
 
     mrpt::maps::COccupancyGridMap2D get_grid_map();
+    void save_point(double x, double y);
 
 private:
     mrpt::poses::CPose2D current_pose;
     mrpt::slam::CICP ICP;
     mrpt::maps::CSimplePointsMap running_map;
     mrpt::maps::COccupancyGridMap2D running_grid;
+    std::vector<std::pair<double,double>> saved_points;
 };
 
 #endif

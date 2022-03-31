@@ -33,7 +33,7 @@ int demo() {
 
     // Insert the base observation
     auto scan1 = lidar.scan();
-    r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,0));
+    r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,M_PI/2));
     int count = 0;
     std::string output_name = "scan_" + std::to_string(count);
     std::cout << "-> Saving initial map as build/" << output_name << std::endl;

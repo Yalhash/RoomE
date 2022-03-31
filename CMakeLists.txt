@@ -3,8 +3,8 @@ project(roomE)
 
 # NOTE: Add cpp files here:
 add_executable(${PROJECT_NAME} 
-    # testing_environments.cpp
-    test.cpp
+    testing_environments.cpp
+    #test.cpp
     # all_tests.cpp
     ArduinoSerial.cpp 
     Lidar_MRPT.cpp
@@ -32,7 +32,7 @@ target_link_libraries(${PROJECT_NAME} ydlidar_sdk)
 
 
 ############## MRPT START######################################### 
-find_package(MRPT COMPONENTS obs slam nav gui)
+find_package(MRPT COMPONENTS  obs slam nav gui)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 message(STATUS "MRPT_LIBRARIES: ${MRPT_LIBRARIES}")
 target_link_libraries(${PROJECT_NAME} ${MRPT_LIBRARIES})

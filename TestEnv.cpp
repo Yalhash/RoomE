@@ -15,7 +15,7 @@ bool TestEnv::is_map_loaded() {
 mrpt::obs::CObservation2DRangeScan TestEnv::scan() {
     mrpt::obs::CObservation2DRangeScan result;
     result.aperture = M_PI*2;
-    virtual_grid.laserScanSimulator(result, currentPosition);
+    virtual_grid.laserScanSimulator(result, currentPosition, 0.5, 1440);
     // simulate 360 scan
     return result;
 }
