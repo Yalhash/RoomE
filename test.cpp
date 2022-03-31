@@ -20,20 +20,6 @@
 #include "RoomeMap.h"
 #include "DriveTrain.h"
 
-int driveTrainTest(){
-    printf("starting\n");
-    printf("\n");
-    fflush(stdout);
-	
-    DriveTrain d_train;
-
-    d_train.turn_right();
-    d_train.go_straight();
-    d_train.turn_left();
-    
-
-
-}
 int demo() {
     printf("starting\n");
     printf("\n");
@@ -87,5 +73,5 @@ int demo() {
 }
 
 int main(int argc, char *argv[]) {
-    return driveTrainTest();
+    return demo();
 }
