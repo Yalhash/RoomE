@@ -13,8 +13,6 @@ public:
     ArduinoSerial() : usb_desc(-1) {}
 
     bool usb_open();
-    bool _write_char(char c);
-    char _read_char();
     bool write_string(const std::string& str);
     std::string read_string();
     bool usb_close();

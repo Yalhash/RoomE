@@ -1,4 +1,3 @@
-
 #include "ArduinoSerial.h"
 #include <stdio.h>
 #include <errno.h>
@@ -81,41 +80,6 @@ bool ArduinoSerial::usb_close() {
 
     usb_desc = -1;
     return err == 0; 
-}
-
-
-
-
-
-char ArduinoSerial::_read_char() {
-    char buf[10];
-	int n;
-
-	while (1) {
-		if ((n = read(usb_desc, buf, 1)) == -1) {
-			if (errno != EAGAIN) {
-				fprintf(stderr, "read() failed: (%d) %s\n", errno, strerror(errno));
-				return '\0';
-			}
-			// errno == EAGAIN, loop around and read again
-		} else {
-			if (n == 1) {
-				return buf[0]; // stop reading
-			}
-			// read 0 bytes, loop around an read again
-		}
-	}
-}
-
-bool ArduinoSerial::_write_char(char c) {
-    ssize_t n;
-    char c_buf[1];
-    c_buf[0] = c;
-    if ((n = write(usb_desc, c_buf, 1)) == -1) {
-        fprintf(stderr, "write() failed: %s\n", strerror(errno));
-        return false;
-    }
-    return true;
 }
 
 bool ArduinoSerial::write_string(const std::string& str) {
