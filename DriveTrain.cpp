@@ -31,8 +31,8 @@ namespace {
             }
 
 
-            double delta_x= math.std::abs(xf-xi); 
-            double delta_y= math.std::abs(yf-yi); 
+            double delta_x= abs(xf-xi); 
+            double delta_y= abs(yf-yi); 
 
             //Distance the roome will physically move
             double dist= sqrt(delta_x*delta_x+delta_y*delta_y);
@@ -96,7 +96,6 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
 
     std::string data_send_arduino_turning ;
     std::string data_send_arduino_stright ;
-    std::cout << "SPONGE0" << std::endl;
    
     //Arduino follows format <State,forwards/backwards,left/right,emergencystop,distance,angle,piconfirmation>
     //State can be 0 for standby, 1 for turn, and 2 for drive straight
@@ -110,7 +109,7 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
 
     data_send_arduino_stright =  "<2,0,1,0," + std::to_string(travel_data[0]) + ",0,1>" ;  // going forward
 
-    std::cout << "trying to send?: " << data_send_arduino_turning << std::endl;
+    std::cout << "trying to send: " << data_send_arduino_turning << std::endl;
 
 
 
@@ -119,10 +118,9 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     auto Turn_odm_str = serial.read_string();
     std::cout << "Turn received: " << Turn_odm_str << std::endl;
 
-    std::cout << "SPONGE4" << std::endl;
-        std::cout << "now send: " << data_send_arduino_stright << std::endl;
+    sleep(2); // Give enough time to come to a stop after moving
+    std::cout << "now send: " << data_send_arduino_stright << std::endl;
     serial.write_string(data_send_arduino_stright);
-    std::cout << "SPONGE5" << std::endl;
     
     auto drive_odm_str = serial.read_string();
     printf("drive odm: '%s'\n", drive_odm_str.c_str());
@@ -142,7 +140,6 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     }
 
     
-    std::cout << "SPONGE6" << std::endl;
    float distance_travel_left_wheel =  (drive_odm_vector[0]/20)* 0.3798318779;
    float distance_travel_right_wheel =  (drive_odm_vector[1]/20)* 0.3798318779;
    float res_distance_wheel =  distance_travel_right_wheel - distance_travel_left_wheel ;
@@ -177,30 +174,9 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     }
  
  
-    std::cout << "SPONGE7" << std::endl;
     // TODO move RoomE and fill left wheel and right wheel with the l/r odometry info
 
     return mrpt::poses::CPose2D(x_new, y_new, final_angle);
 }
 
 
-//TODO: test functions remove later
-    //Arduino follows format <State,forwards/backwards,left/right,emergencystop,distance,angle,piconfirmation>
-    //State can be 0 for standby, 1 for turn, and 2 for drive straight
-void DriveTrain::turn_right(){
-    serial.write_string("<1,0,1,0,0,90,1>");
-    auto Turn_odm_str = serial.read_string();
-    std::cout << "Turn received: " << Turn_odm_str << std::endl;
-}
-
-void DriveTrain::turn_left(){
-    serial.write_string("<1,0,0,0,0,90,1>");
-    auto Turn_odm_str = serial.read_string();
-    std::cout << "Turn received: " << Turn_odm_str << std::endl;
-}
-
-void DriveTrain::go_straight(){
-    serial.write_string("<2,0,0,0,0.1,0,1>");
-    auto odm_str = serial.read_string();
-    std::cout << "Straight drive odm received: " << odm_str << std::endl;
-}

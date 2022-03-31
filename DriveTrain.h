@@ -8,6 +8,7 @@
 
 // Local includes
 #include "ArduinoSerial.h"
+class RoomeTest;
 
 class DriveTrain {
 public:
@@ -23,6 +24,7 @@ public:
 
 private:
     ArduinoSerial serial;
+    friend RoomeTest;
 };
 
 #endif
