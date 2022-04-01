@@ -3,6 +3,7 @@
 #include <set>
 #include <utility> // pair
 #include <cmath>
+#include <tuple>
 
 RoomeNav::RoomeNav() {
     planner.robotRadius = 0.30f; // RoomE is about 26 cm, rounding to 30 for safety.
@@ -22,25 +23,67 @@ std::optional<std::deque<mrpt::math::TPoint2D>> RoomeNav::find_path(
 }
 
 namespace {
-    void get_nearby_points(std::deque<std::pair<int,int>>& que,
+    void get_nearby_points(std::deque<std::tuple<int,int,int>>& que,
                 std::set<std::pair<int,int>>& seen,
-                int x, int y, int num_rows, int num_cols) {
+                int x, int y, const mrpt::maps::COccupancyGridMap2D& grid) {
 
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                if ((i == 0 && j == 0)  
-                   || (x + i < 0 || x + i >= num_cols) 
-                   || (y + j < 0 || y + j >= num_rows)){
-                  continue;
-                }
-                auto p = std::make_pair(x + i,y + j);
-                if (seen.find(p) == seen.end()) {
-                    seen.emplace(p);
-                    que.push_back(p);
-                } else {
-                  continue;
-                }
-            }
+
+        int num_rows = grid.getSizeX();
+        int num_cols = grid.getSizeY();
+        double area_uncertainty;
+
+
+        //forward
+        auto p = std::make_pair(x, y + 0.6);
+
+        if (seen.find(p) == seen.end()){
+            area_uncertainty = find_area_uncertainty(grid, grid.x2idx(x - 0.3) ,grid.y2idx(y + 0.3) ,num_rows,num_cols);
+            
+            if (area_uncertainty != -1 ){
+                que.push_back(std::make_tuple(x, y + 0.6, area_uncertainty));
+                seen.push_back(p);
+        }
+        }
+
+
+
+        //left
+        p = std::make_pair(x - 0.6, y); 
+
+
+        if (seen.find(p) == seen.end()){
+            area_uncertainty = find_area_uncertainty(grid, grid.x2idx(x - 0.9) ,grid.y2idx(y - 0.3) ,num_rows,num_cols);
+            
+            if (area_uncertainty != -1 ){
+                que.push_back(std::make_tuple(x - 0.6, y , area_uncertainty));
+                seen.push_back(p);
+        }
+        }
+
+        //right
+        p = std::make_pair(x + 0.6, y); 
+
+
+        if (seen.find(p) == seen.end()){
+            area_uncertainty = find_area_uncertainty(grid, grid.x2idx(x + 0.3) ,grid.y2idx(y - 0.3) ,num_rows,num_cols);
+            
+            if (area_uncertainty != -1 ){
+                que.push_back(std::make_tuple(x + 0.6, y , area_uncertainty));
+                seen.push_back(p);
+        }
+        }
+
+        //backwards
+        p = std::make_pair(x, y - 0.6); 
+
+
+        if (seen.find(p) == seen.end()){
+            area_uncertainty = find_area_uncertainty(grid, grid.x2idx(x - 0.3) ,grid.y2idx(y - 0.9) ,num_rows,num_cols);
+            
+            if (area_uncertainty != -1 ){
+                que.push_back(std::make_tuple(x, y - 0.6, area_uncertainty));
+                seen.push_back(p);
+        }
         }
     }
 
