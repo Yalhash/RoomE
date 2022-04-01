@@ -15,7 +15,7 @@ int main() {
 
     // Insert the base observation
     auto scan1 = env.scan();
-    r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,0));
+    r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,M_PI/2));
     int count = 0;
     std::string output_name =  std::to_string(count++) + "_scan";
     std::cout << "-> Saving current map as build/" << output_name << std::endl;
@@ -76,9 +76,9 @@ int main() {
         // Update location exactly 
         env.update_pose(absolute_new_pose);
         // Take scan
-        auto currScan = env.scan();
+        auto scan = env.scan();
         // insert the scan and update the map
-        r_map.insert_observation(currScan, pose_delta);  
+        r_map.insert_observation(scans, pose_delta);  
         virtual_pose = absolute_new_pose;
         // save scan
         std::cout << r_map.get_pose() << std::endl;
