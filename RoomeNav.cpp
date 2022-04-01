@@ -49,9 +49,9 @@ namespace {
                                  int x, int y, int num_rows, int num_cols) {
         int count = 0;
         double sum;
-        // 9 wide square area average
-        for (int i = 0; i < 10; ++i) {
-            for (int j = 0; j < 10; ++j) {
+        // 12 wide square area average (To cover area of RoomE)
+        for (int i = 0; i < 12; ++i) {
+            for (int j = 0; j < 12; ++j) {
                 //if out of range that means we cannot move here
                 if ((x + i < 0 || x + i >= num_cols) || 
                     (y + j < 0 || y + j >= num_rows)) {
@@ -81,36 +81,67 @@ std::optional<mrpt::math::TPoint2D> RoomeNav::find_destiny(
     int num_rows = grid.getSizeX();
     int num_cols = grid.getSizeY();
 
-    double min_uncertainty = 1;
-
-    std::deque<std::pair<int,int,int>> que;
-
-
-    //forward
-    double area_uncertainty = find_area_uncertainty(grid, grid.x2idx(curr_x - 0.3) ,grid.y2idx(curr_y + 0.3) ,num_rows,num_cols);
-
-    if (area_uncertainty != -1 && area_uncertainty < min_uncertainty){
-        mrpt::math::TPoint2D ret_val(curr_x, curr_y + 0.3);
-        return  std::optional<mrpt::math::TPoint2D>{};
-    }
-
-    //left 
-    area_uncertainty = find_area_uncertainty(grid, grid.x2idx(curr_x - 0.3) ,grid.y2idx(curr_y + 0.3) ,num_rows,num_cols);
-
-    if (area_uncertainty != -1){
-        mrpt::math::TPoint2D ret_val(curr_x, curr_y + );
-        return  std::optional<mrpt::math::TPoint2D>{ret_val};
-    }
-    
+    std::deque<std::pair<int,int>> que;
 
     //four starting points are x - 0.15
-    que.push_back()
-
     std::set<std::pair<int,int>> seen;
-    que.push_back(std::make_pair(x_ind, y_ind));
-
-
-
+    que.push_back(std::make_pair(curr_x, curr_y));
+    while (!que.empty()) {
+        auto p = que.front();
+        que.pop_front();
+        auto prob = find_area_uncertainty(grid, p.first, p.second, num_rows, num_cols);
+        if (prob == -1) {
+            continue;
+        }
+        else if (std::abs(prob - 0.5) < 0.05) {
+            mrpt::math::TPoint2D ret_val(grid.idx2x(p.first), grid.idx2y(p.second));
+            return std::optional<mrpt::math::TPoint2D>{ret_val};
+        }
+        get_nearby_points(que, seen, p.first, p.second, num_rows, num_cols);
+    }
     
     return std::nullopt; // We are done...
 }
+//std::optional<mrpt::math::TPoint2D> RoomeNav::find_destiny(
+//        const mrpt::maps::COccupancyGridMap2D& grid,
+//        const mrpt::poses::CPose2D& start) {
+//    // Get our starting point
+//    int curr_x =  start.m_coords[0];
+//    int curr_y =  start.m_coords[1];
+//
+//    int num_rows = grid.getSizeX();
+//    int num_cols = grid.getSizeY();
+//
+//    double min_uncertainty = 1;
+//
+//    std::deque<std::pair<int,int,int>> que;
+//
+//
+//    //forward
+//    double area_uncertainty = find_area_uncertainty(grid, grid.x2idx(curr_x - 0.3) ,grid.y2idx(curr_y + 0.3) ,num_rows,num_cols);
+//
+//    if (area_uncertainty != -1 && area_uncertainty < min_uncertainty){
+//        mrpt::math::TPoint2D ret_val(curr_x, curr_y + 0.3);
+//        return  std::optional<mrpt::math::TPoint2D>{};
+//    }
+//
+//    //left 
+//    area_uncertainty = find_area_uncertainty(grid, grid.x2idx(curr_x - 0.3) ,grid.y2idx(curr_y + 0.3) ,num_rows,num_cols);
+//
+//    if (area_uncertainty != -1){
+//        mrpt::math::TPoint2D ret_val(curr_x, curr_y + );
+//        return  std::optional<mrpt::math::TPoint2D>{ret_val};
+//    }
+//    
+//
+//    //four starting points are x - 0.15
+//    que.push_back()
+//
+//    std::set<std::pair<int,int>> seen;
+//    que.push_back(std::make_pair(x_ind, y_ind));
+//
+//
+//
+//    
+//    return std::nullopt; // We are done...
+//}
