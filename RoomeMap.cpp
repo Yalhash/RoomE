@@ -4,21 +4,22 @@
 #include <mrpt/gui/CDisplayWindow3D.h>
 
 RoomeMap::RoomeMap() {
+    current_pose = mrpt::poses::CPose2D(0.0f,0.0f,M_PI/2);
     // TODO: update in insert_observation based on how much we've moved
     ICP.options.maxIterations = 100;
-    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(3.0f);
-    ICP.options.thresholdDist = 0.30;
+    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(45.0f);
+    ICP.options.thresholdDist = 0.17f;
     ICP.options.ALFA = 0.5f;
     ICP.options.smallestThresholdDist = 0.05f;
-    ICP.options.doRANSAC = false;
+    ICP.options.doRANSAC = true;
     ICP.options.ICP_algorithm = mrpt::slam::icpClassic;
-
-
 }
 
 void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan,
                                   const mrpt::poses::CPose2D& pose_delta_approx) {
-
+    //should not be off by more than we actually moved
+    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(pose_delta_approx.phi());
+    ICP.options.thresholdDist = sqrt(pose_delta_approx.m_coords[0]*pose_delta_approx.m_coords[0] + pose_delta_approx.m_coords[1]*pose_delta_approx.m_coords[1]);
     mrpt::maps::CSimplePointsMap curr_map;
     curr_map.insertObservation(&scan);
     //NOTE: may want run info in future to check goodness etc.
@@ -27,19 +28,34 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
             &curr_map,
             pose_delta_approx, // pose of m2 relative to m1
             nullptr, // runtime
-            nullptr); // run info 
-    mrpt::poses::CPosePDFGaussian g_pdf;
-    g_pdf.copyFrom(*pdf);
+            &info); // run info 
+
+    std::cout << "ICP iterations: " << info.nIterations << " goodness: " << info.goodness << std::endl;
     
     // update current pose to where we think we are
-    current_pose += g_pdf.mean; 
-    std::cout << "cpose: " << current_pose << " g_pdf: "  << g_pdf.mean << " pose_delta_approx " << pose_delta_approx<< std::endl;
-    // correct our scan
-    curr_map.changeCoordinatesReference(current_pose);
-    // update the current map and grid
-    running_map.fuseWith(&curr_map);
-    mrpt::poses::CPose3D current_3D(current_pose);
-    running_grid.insertObservation(&scan,&current_3D);
+    std::cout << "cpose b4: " << current_pose << std::endl;
+    auto mean_pose = pdf->getMeanVal(); 
+
+    //If icp algorithm isnt good enough use odometry
+    if (info.goodness >= 0){
+        current_pose.m_coords[0] += mean_pose.m_coords[0];
+        current_pose.m_coords[1] += mean_pose.m_coords[1];
+        current_pose.phi_incr(mean_pose.phi());
+
+        // correct our scan
+        curr_map.changeCoordinatesReference(-mean_pose);
+        // update the current map and grid
+        running_map.fuseWith(&curr_map);
+        mrpt::poses::CPose3D current_3D(current_pose);
+        running_grid.insertObservation(&scan,&current_3D);
+    }else{
+        current_pose.m_coords[0] += pose_delta_approx.m_coords[0];
+        current_pose.m_coords[1] += pose_delta_approx.m_coords[1];
+        current_pose.phi_incr(pose_delta_approx.phi());
+        std::cout << "bad icp. Discarding and using odometry values" << std::endl;
+    }
+
+    std::cout << "cpose: " << current_pose << " pdf mean: "  << mean_pose << " pose_delta_approx " << pose_delta_approx<< std::endl;
 }
 
 

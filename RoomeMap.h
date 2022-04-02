@@ -27,6 +27,7 @@ public:
 private:
     mrpt::poses::CPose2D current_pose;
     mrpt::slam::CICP ICP;
+    mrpt::slam::CICP::TReturnInfo info;
     mrpt::maps::CSimplePointsMap running_map;
     mrpt::maps::COccupancyGridMap2D running_grid;
     std::vector<std::pair<double,double>> saved_points;
