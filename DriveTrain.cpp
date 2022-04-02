@@ -5,7 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <math.h>
-
+#include <algorithm>
 
 DriveTrain::DriveTrain() {
     serial.usb_open();
@@ -54,7 +54,9 @@ namespace {
             //Ensure we take the shortest turn direction
             if(turn_angle > 180){
                  turn_angle= -(360-turn_angle);
-            }       
+            }else if(turn_angle < -180){
+                 turn_angle = 360 + turn_angle;
+            }  
 
             vec_str.push_back(dist);
             vec_str.push_back(turn_angle);
@@ -100,11 +102,11 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     //Arduino follows format <State,forwards/backwards,left/right,emergencystop,distance,angle,piconfirmation>
     //State can be 0 for standby, 1 for turn, and 2 for drive straight
     // combine data for transfer  
-    if (travel_data[1]>0){    //right trun
-        data_send_arduino_turning = "<1,0,1,0,0,"+ std::to_string(travel_data[1]) + ",1>" ;   
+    if (travel_data[1]>0){    //left turn
+        data_send_arduino_turning = "<1,0,0,0,0,"+ std::to_string(travel_data[1]) + ",1>" ;   
     }
-    else {                     //left turn
-        data_send_arduino_turning = "<1,0,0,0,0," +  std::to_string(-travel_data[1]) + ",1>" ; 
+    else {                     //right turn
+        data_send_arduino_turning = "<1,0,1,0,0," +  std::to_string(-travel_data[1]) + ",1>" ; 
     }
 
     data_send_arduino_stright =  "<2,0,1,0," + std::to_string(travel_data[0]) + ",0,1>" ;  // going forward
@@ -132,11 +134,11 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
 
     // angle changed due to turning 
     float angle_changed;
-    if (travel_data[1]>0){  // right turn
-     angle_changed = start.phi()- ((turn_odm_vector[0] ) *(360/ 20));
+    if (travel_data[1]<0){  // right turn
+     angle_changed = -((turn_odm_vector[0] ) *(90/ 20));
      }
     else{   // left turn 
-     angle_changed = start.phi() - ((turn_odm_vector[1] ) *(360/ 20));   
+     angle_changed = ((turn_odm_vector[1] ) *(90/ 20));   
     }
 
     
@@ -144,39 +146,40 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
    float distance_travel_right_wheel =  (drive_odm_vector[1]/20)* 0.3798318779;
    float res_distance_wheel =  distance_travel_right_wheel - distance_travel_left_wheel ;
    float angle_change_drive =   res_distance_wheel/ 0.25;
-   float total_distance_travel =  (distance_travel_left_wheel + distance_travel_right_wheel)/2;
+   float total_distance_travel = std::min(distance_travel_left_wheel, distance_travel_right_wheel);
    float final_angle;
+   float final_angle_delta;
    
-   if(angle_change_drive<0){
-        final_angle = angle_changed + angle_change_drive;  // right turn 
+   final_angle_delta = angle_changed + angle_change_drive;  
+   final_angle = start.phi()*(180/M_PI) + angle_changed + angle_change_drive;
+
+
+   float delta_y,delta_x,y_factor,x_factor;
+
+   //whether its + or - x and y change
+   x_factor = 1;
+   y_factor = 1;
+
+
+   if (coords[0] > finish.x){
+    final_angle = 180 - final_angle;
+    x_factor = -1;
    }
-    else{
-         final_angle = angle_changed + angle_change_drive; // left turn 
-    }
+   if (coords[1] > finish.y){
+       final_angle = -final_angle;
+       y_factor = -1;
+   }
+   //convert to radians
+   final_angle *= (M_PI/180);
 
-    float y_new,x_new ;
-    if(final_angle <90){
-        y_new= sin(final_angle)* total_distance_travel + coords[1];
-        x_new = cos(final_angle)*total_distance_travel + coords[0];
-    }
-    else if(final_angle >90 && final_angle <180){
-        y_new= sin(180-final_angle)* total_distance_travel + coords[1];
-        x_new = -cos(180-final_angle)* total_distance_travel + coords[0];
-    }
-    else if(final_angle >180 && final_angle <270){
-        y_new= -sin(final_angle-180) * total_distance_travel + coords[1];
-        x_new = -cos(final_angle-180)* total_distance_travel+ coords[0];
 
-    }
-    else{
-        y_new= -sin(360-final_angle) * total_distance_travel+ coords[1];
-        x_new = cos(360-final_angle) *total_distance_travel + coords[0];
-    }
- 
- 
+    delta_x = x_factor*cos(final_angle)*total_distance_travel;
+    delta_y = y_factor*sin(final_angle)*total_distance_travel;
+   
+
     // TODO move RoomE and fill left wheel and right wheel with the l/r odometry info
 
-    return mrpt::poses::CPose2D(x_new, y_new, final_angle);
+    return mrpt::poses::CPose2D(delta_x, delta_y, final_angle_delta* (M_PI/180));
 }
 
 
