@@ -1,6 +1,7 @@
 #include "RoomeMap.h"
 #include "RoomeNav.h"
 #include "TestEnv.h"
+#include <mrpt/utils/CImage.h>
 
 int main() {
     RoomeMap r_map;
@@ -20,6 +21,10 @@ int main() {
     std::string output_name =  std::to_string(count++) + "_scan";
     std::cout << "-> Saving current map as build/" << output_name << std::endl;
     r_map.save_grid_to_file(output_name);
+    auto grid = r_map.get_grid_map();
+    mrpt::utils::CImage img;
+
+    return 0;
     while (true) {
         r_map.save_point(r_map.get_pose().m_coords[0], r_map.get_pose().m_coords[1]);
         auto opt_next_point = nav.find_destiny(r_map.get_grid_map(), r_map.get_pose());
@@ -78,7 +83,7 @@ int main() {
         // Take scan
         auto scan = env.scan();
         // insert the scan and update the map
-        r_map.insert_observation(scans, pose_delta);  
+        r_map.insert_observation(scan, pose_delta);  
         virtual_pose = absolute_new_pose;
         // save scan
         std::cout << r_map.get_pose() << std::endl;
