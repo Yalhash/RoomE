@@ -16,11 +16,37 @@ std::optional<std::deque<mrpt::math::TPoint2D>> RoomeNav::find_path(
         const mrpt::maps::COccupancyGridMap2D& grid,
         const mrpt::poses::CPose2D& start,
         const mrpt::poses::CPose2D& finish) {
+    std::deque<mrpt::math::TPoint2D> detailed_path;
     std::deque<mrpt::math::TPoint2D> result_path;
     bool notFound;
-    planner.computePath(grid, start, finish, result_path, notFound);
+    planner.computePath(grid, start, finish, detailed_path, notFound);
 
     if (notFound) return std::nullopt;
+
+    // No need to shorten the path
+    if (detailed_path.size() <= 2) {
+        return std::optional<std::deque<mrpt::math::TPoint2D>>{result_path};
+    }
+
+
+    // Cut down on the number of points by only storing the points which are not straight lines from their previous point
+    // Assume that the robot is about at the start point
+    mrpt::math::TPoint2D start_point(detailed_path[0]);
+    mrpt::math::TPoint2D curr_point(detailed_path[1]);
+    double slope = 0;
+    for (int i = 2; i < detailed_path.size(); ++i) {
+        // If the points are colinear we can skip past them, otherwise a new line is being added
+        if (abs((start_point.x - curr_point.x)*(curr_point.y - detailed_path[i].y)
+        - (curr_point.x - detailed_path[i].x)*(start_point.y - curr_point.y)) > 0.01) {
+            result_path.push_back(detailed_path[i-1]);
+            start_point = detailed_path[i-1];
+            curr_point = detailed_path[i];
+        } 
+        
+    }
+
+    result_path.push_back(detailed_path.back());
+
 
     return std::optional<std::deque<mrpt::math::TPoint2D>>{result_path};
 }
