@@ -26,10 +26,6 @@ public:
             const mrpt::poses::CPose2D& start,
             const mrpt::poses::CPose2D& finish);
 
-    std::optional<mrpt::math::TPoint2D> find_destiny(
-            const mrpt::maps::COccupancyGridMap2D& grid,
-            const mrpt::poses::CPose2D& start);
-
     std::vector<Frontier> find_frontiers(
             const mrpt::maps::COccupancyGridMap2D& grid,
             const mrpt::poses::CPose2D& start);
