@@ -19,7 +19,7 @@ public:
     void save_points_to_file(const std::string& filename);
     void save_grid_to_file(const std::string& filename);
 
-    mrpt::poses::CPose2D get_pose();
+    mrpt::poses::CPose2D get_pose() const;
 
     mrpt::maps::COccupancyGridMap2D get_grid_map();
     void save_point(double x, double y);
