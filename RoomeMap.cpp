@@ -21,8 +21,9 @@ void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan
 
     //update current pose to where we approximately are based on odometry values
     current_pose = mrpt::poses::CPose2D(current_pose.m_coords[0] + pose_delta_approx.m_coords[0], 
-                                        current_pose.m_coords[1] + pose_delta_approx.m_coords[1]],
+                                        current_pose.m_coords[1] + pose_delta_approx.m_coords[1],
                                         current_pose.phi() + pose_delta_approx.phi());
+    current_pose.normalizePhi();
 
     //Create map to represent current scan, and change its frame of reference to the updated current_pose (approximately where it was taken from)
     mrpt::maps::CSimplePointsMap curr_map;

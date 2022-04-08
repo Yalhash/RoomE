@@ -107,7 +107,9 @@ int main() {
         img.saveToFile(output_name);
 
 
-        mrpt::poses::CPose2D pose_delta = new_pose - virtual_pose;
+        mrpt::poses::CPose2D pose_delta(new_pose.m_coords[0] - virtual_pose.m_coords[0],
+                                        new_pose.m_coords[1] - virtual_pose.m_coords[1],
+                                        new_pose.phi() - virtual_pose.phi());
 
         /* std::cout << "Want to move " << pose_delta << std::endl; */
         virtual_pose = new_pose;
