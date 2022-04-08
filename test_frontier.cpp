@@ -85,8 +85,6 @@ int main() {
         auto next_point = frontier.centroid;
 
 
-
-
         mrpt::poses::CPose2D new_pose(next_point.x,next_point.y, virtual_pose.phi());
         mrpt::poses::CPose2D next_roome_pose(next_point.x,next_point.y, r_map.get_pose().phi());
 
@@ -97,27 +95,30 @@ int main() {
         add_frontier_info(img, frontiers,r_map.get_grid_map());
         add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
         if (travel_path) {
-            std::cout << "Path is good! Size: " << travel_path->size() << std::endl;
+            std::cout << "Path exists, Size: " << travel_path->size() << std::endl;
             add_path_nodes(img,*travel_path, r_map.get_grid_map());
         } else {
-            std::cout << "Path is bad!" << std::endl;
+            std::cout << "Couldn't find a path, exiting." << std::endl;
+            break;
         }
         // save scan
         output_name = "outputs/" + std::to_string(count++) + "_scan.jpg" ;
         img.saveToFile(output_name);
 
 
-        mrpt::poses::CPose2D pose_delta = new_pose - virtual_pose;
+
+        mrpt::poses::CPose2D pose_delta;
+        for (const auto& pt : *travel_path) {
+            // Move to point, and get new pose:
+            mrpt::poses::CPose2D new_pose(pt.x, pt.y, r_map.get_pose().phi());
+            pose_delta = new_pose - r_map.get_pose();
+            virtual_pose = new_pose;
+            env.update_pose(virtual_pose);
+            auto scan = env.scan();
+            r_map.insert_observation(scan, pose_delta);  
+        }
 
         /* std::cout << "Want to move " << pose_delta << std::endl; */
-        virtual_pose = new_pose;
-        /* std::cout << "virtual: " << virtual_pose << std::endl; */
-        // Update location exactly 
-        env.update_pose(virtual_pose);
-        // Take scan
-        auto scan = env.scan();
-        // insert the scan and update the map
-        r_map.insert_observation(scan, pose_delta);  
         
     }
     mrpt::utils::CImage img;
