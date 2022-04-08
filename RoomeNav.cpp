@@ -151,33 +151,40 @@ std::vector<RoomeNav::Frontier> RoomeNav::find_frontiers(
         const mrpt::maps::COccupancyGridMap2D& grid,
         const mrpt::poses::CPose2D& start) {
 
-    // NOTE: maybe change this to something higher if need be
-    constexpr unsigned int min_front_size = 200; // Don't pay attention to noise
+    // This starts as 200, and decreases by 50 until a new frontier is found, or 0 is reached
+    unsigned int min_front_size = 200; // Don't pay attention to noise
 
     std::vector<RoomeNav::Frontier> frontiers;
     auto start_p = std::make_pair(grid.x2idx(start.m_coords[0]), grid.y2idx(start.m_coords[1]));
 
-    std::deque<std::pair<int,int>> que;
-    std::set<std::pair<int,int>> seen;
-    std::set<std::pair<int,int>> frontier_pts;
+    while (min_front_size != 0) {
+        std::deque<std::pair<int,int>> que;
+        std::set<std::pair<int,int>> seen;
+        std::set<std::pair<int,int>> frontier_pts;
 
-    que.push_back(start_p);
-    /* std::cout << "Finding frontiers!" << std::endl; */
-    while (!que.empty()) {
-        auto p = que.front();
-        que.pop_front();
-        for (const auto neigh_pt : nbhood(p, grid)) {
-            // Add all free unseen cells 
-            if (grid.getCell(neigh_pt.first, neigh_pt.second) > FREE_PROB && seen.find(neigh_pt) == seen.end()) {
-                seen.insert(neigh_pt);
-                que.push_back(neigh_pt);
-            } else if (is_frontier_cell(neigh_pt, grid, frontier_pts)) {
-                frontier_pts.insert(neigh_pt);
-                auto new_front = make_frontier(neigh_pt, start_p, grid, frontier_pts);
-                if (new_front.pts.size() > min_front_size) {
-                    frontiers.push_back(new_front);
+        que.push_back(start_p);
+        while (!que.empty()) {
+            auto p = que.front();
+            que.pop_front();
+            for (const auto neigh_pt : nbhood(p, grid)) {
+                // Add all free unseen cells 
+                if (grid.getCell(neigh_pt.first, neigh_pt.second) > FREE_PROB && seen.find(neigh_pt) == seen.end()) {
+                    seen.insert(neigh_pt);
+                    que.push_back(neigh_pt);
+                } else if (is_frontier_cell(neigh_pt, grid, frontier_pts)) {
+                    frontier_pts.insert(neigh_pt);
+                    auto new_front = make_frontier(neigh_pt, start_p, grid, frontier_pts);
+                    if (new_front.pts.size() > min_front_size) {
+                        frontiers.push_back(new_front);
+                    }
                 }
             }
+        }
+        if (frontiers.size() != 0) {
+            break;
+        } else {
+            min_front_size -= 50;
+            std::cout << "Decreasing the minimum frontier size by 50, looking for frontiers of size: " << min_front_size << std::endl;
         }
     }
 
