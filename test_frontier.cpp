@@ -69,7 +69,7 @@ int main() {
     // Insert the base observation
     auto scan1 = env.scan();
     // 0 Difference scan;
-    r_map.insert_observation(scan1, mrpt::poses::CPose2D(0,0,0));
+    r_map.initial_observation(scan1);
     int count = 0;
 
     while (true) {
