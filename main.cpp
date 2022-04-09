@@ -152,8 +152,8 @@ int main() {
             r_map.insert_observation(scan, pose_delta);  
 
             // Move forward to scan again
-            pose_delta = p_train.post_scan_drive();
-            auto scan = lidar.scan();
+            pose_delta = d_train.post_scan_drive();
+            scan = lidar.scan();
             r_map.insert_observation(scan, pose_delta);  
         }
         

@@ -170,7 +170,7 @@ mrpt::poses::CPose2D DriveTrain::post_scan_drive(){
     if (!movement_calculated){
         return mrpt::poses::CPose2D(0,0,0);
     }
-    std::cout << "send: " << data_send_arduino_stright << std::endl;
+    std::cout << "send: " << calculated_straight_movement << std::endl;
     serial.write_string(calculated_straight_movement);
 
 

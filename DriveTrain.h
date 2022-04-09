@@ -25,7 +25,7 @@ public:
     // Moves the roome straight by the previously calculated amount. 
     // Returns the approximate change in x,y,phi based on odometry info
     // can only be called after calculate_and_turn has been run
-    mrpt::poses::CPose2D DriveTrain::post_scan_drive();
+    mrpt::poses::CPose2D post_scan_drive();
 
 private:
     ArduinoSerial serial;
