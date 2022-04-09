@@ -146,8 +146,13 @@ int main() {
 		// The next point in the path is unreachable
 		if (!next_point_path) break; 
             // Move to point along the path,
-            pose_delta = d_train.move(r_map.get_pose(), pt);
+            pose_delta = d_train.calculate_and_turn(r_map.get_pose(), pt);
             // scan and re-localize,
+            auto scan = lidar.scan();
+            r_map.insert_observation(scan, pose_delta);  
+
+            // Move forward to scan again
+            pose_delta = p_train.post_scan_drive();
             auto scan = lidar.scan();
             r_map.insert_observation(scan, pose_delta);  
         }
