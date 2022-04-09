@@ -9,6 +9,7 @@
 
 DriveTrain::DriveTrain() {
     serial.usb_open();
+    movement_calculated = false;
 }
 
 DriveTrain::~DriveTrain() {
@@ -18,7 +19,7 @@ DriveTrain::~DriveTrain() {
 
 
 namespace { 
-// function to calculate distance and angle 
+// function to calculate distance and angle  to move from (xi,yi) to (xf,yf)
     std::vector<double> get_turn_angle(double xi,double yi, double curr_angle, double xf, double yf){
 
             std::vector<double> vec_str;    
@@ -86,9 +87,12 @@ namespace {
         }        
            return vect;     
     }
+
+
 }
 
-mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish) {
+//calculates the required turn and drive vectors and then turns. Call post_scan_drive() afterwards to move the calculated amount
+mrpt::poses::CPose2D DriveTrain::calculate_and_turn(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish) {
 
     auto coords = start.m_coords;
     std::vector travel_data =  get_turn_angle(coords[0],coords[1],start.phi(), finish.x, finish.y);  
@@ -97,7 +101,6 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     std::cout << "travel data: " << travel_data[0] << ", " << travel_data[1] << std::endl;
 
     std::string data_send_arduino_turning ;
-    std::string data_send_arduino_stright ;
    
     //Arduino follows format <State,forwards/backwards,left/right,emergencystop,distance,angle,piconfirmation>
     //State can be 0 for standby, 1 for turn, and 2 for drive straight
@@ -109,7 +112,7 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
         data_send_arduino_turning = "<1,0,1,0,0," +  std::to_string(-travel_data[1]) + ",1>" ; 
     }
 
-    data_send_arduino_stright =  "<2,0,1,0," + std::to_string(travel_data[0]) + ",0,1>" ;  // going forward
+    calculated_straight_movement = "<2,0,1,0," + std::to_string(travel_data[0]) + ",0,1>" ; 
 
     std::cout << "trying to send: " << data_send_arduino_turning << std::endl;
 
@@ -120,66 +123,87 @@ mrpt::poses::CPose2D DriveTrain::move(mrpt::poses::CPose2D start, mrpt::math::TP
     auto Turn_odm_str = serial.read_string();
     std::cout << "Turn received: " << Turn_odm_str << std::endl;
 
-    sleep(2); // Give enough time to come to a stop after moving
-    std::cout << "now send: " << data_send_arduino_stright << std::endl;
-    serial.write_string(data_send_arduino_stright);
+    //sleep(2); // Give enough time to come to a stop after moving
+
     
-    auto drive_odm_str = serial.read_string();
-    printf("drive odm: '%s'\n", drive_odm_str.c_str());
+
 
     std::vector<float> turn_odm_vector = parse_str_between_two_markers(Turn_odm_str, "<",">");
-    std::vector<float> drive_odm_vector = parse_str_between_two_markers(drive_odm_str, "<",">");
 
 
 
-    // angle changed due to turning 
-    float angle_changed;
-    if (travel_data[1]<0){  // right turn
-     angle_changed = -((turn_odm_vector[0] ) *(90/ 20));
-     }
-    else{   // left turn 
-     angle_changed = ((turn_odm_vector[1] ) *(90/ 20));   
-    }
+
+
+
+    double left_encoder_ticks = turn_odm_vector[0];
+    double right_encoder_ticks = turn_odm_vector[1];
+    double distance_travel_left_wheel =  (left_encoder_ticks/20)* 0.3798318779;
+    double distance_travel_right_wheel =  (right_encoder_ticks/20)* 0.3798318779;
 
     
-   float distance_travel_left_wheel =  (drive_odm_vector[0]/20)* 0.3798318779;
-   float distance_travel_right_wheel =  (drive_odm_vector[1]/20)* 0.3798318779;
-   float res_distance_wheel =  distance_travel_right_wheel - distance_travel_left_wheel ;
-   float angle_change_drive =   res_distance_wheel/ 0.25;
-   float total_distance_travel = std::min(distance_travel_left_wheel, distance_travel_right_wheel);
-   float final_angle;
-   float final_angle_delta;
-   
-   final_angle_delta = angle_changed + angle_change_drive;  
-   final_angle = start.phi()*(180/M_PI) + angle_changed + angle_change_drive;
+    double phi = (distance_travel_right_wheel - distance_travel_left_wheel )/ 0.25;
 
 
-   float delta_y,delta_x,y_factor,x_factor;
+    double total_distance_travel = (distance_travel_left_wheel + distance_travel_right_wheel)*0.5;
 
-   //whether its + or - x and y change
-   x_factor = 1;
-   y_factor = 1;
+    double delta_x,delta_y;
+    if (phi != 0)
+    {
+        const double R = phi/total_distance_travel;
+        delta_x = R*sin(phi);
+        delta_y = R*(1 - cos(phi));
+    }
+    else
+    {
+        delta_x = total_distance_travel;
+        delta_y = 0;
+    }
 
+    movement_calculated = true;
 
-   if (coords[0] > finish.x){
-    final_angle = 180 - final_angle;
-    x_factor = -1;
-   }
-   if (coords[1] > finish.y){
-       final_angle = -final_angle;
-       y_factor = -1;
-   }
-   //convert to radians
-   final_angle *= (M_PI/180);
-
-
-    delta_x = x_factor*cos(final_angle)*total_distance_travel;
-    delta_y = y_factor*sin(final_angle)*total_distance_travel;
-   
-
-    // TODO move RoomE and fill left wheel and right wheel with the l/r odometry info
-
-    return mrpt::poses::CPose2D(delta_x, delta_y, final_angle_delta* (M_PI/180));
+    return mrpt::poses::CPose2D(delta_x, delta_y, phi); 
 }
 
 
+// Moves the roome straight by the previously calculated amount. ONLY CALL AFTER calculate_and_turn HAS BEEN RUN
+mrpt::poses::CPose2D DriveTrain::post_scan_drive(){
+    if (!movement_calculated){
+        return mrpt::poses::CPose2D(0,0,0);
+    }
+    std::cout << "send: " << data_send_arduino_stright << std::endl;
+    serial.write_string(calculated_straight_movement);
+
+
+    auto drive_odm_str = serial.read_string();
+    printf("drive odm: '%s'\n", drive_odm_str.c_str());
+    std::vector<float> drive_odm_vector = parse_str_between_two_markers(drive_odm_str, "<",">");
+
+    double left_encoder_ticks = drive_odm_vector[0];
+    double right_encoder_ticks = drive_odm_vector[1];
+    double distance_travel_left_wheel =  (left_encoder_ticks/20)* 0.3798318779;
+    double distance_travel_right_wheel =  (right_encoder_ticks/20)* 0.3798318779;
+
+    
+    double phi = (distance_travel_right_wheel - distance_travel_left_wheel )/ 0.25;
+
+
+    double total_distance_travel = (distance_travel_left_wheel + distance_travel_right_wheel)*0.5;
+
+    double delta_x,delta_y;
+    if (phi != 0)
+    {
+        const double R = phi/total_distance_travel;
+        delta_x = R*sin(phi);
+        delta_y = R*(1 - cos(phi));
+    }
+    else
+    {
+        delta_x = total_distance_travel;
+        delta_y = 0;
+    }
+
+
+    movement_calculated = false;
+
+    return mrpt::poses::CPose2D(delta_x, delta_y, phi); 
+}
