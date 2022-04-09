@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <cctype>
 
+#define NUM_SCANS 1
+
 
 // Helper functions
 namespace {
@@ -97,24 +99,25 @@ namespace {
         return true;
     }
 
-    mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const LaserScan& rawScan) {
+    mrpt::obs::CObservation2DRangeScan getMRPTRangeScanFromScanData(const std::vector<LaserScan>& rawScans) {
         mrpt::obs::CObservation2DRangeScan resultScan;
-        size_t scanSize = rawScan.points.size();
+	size_t scanSize = 0;
+	for (const auto& rawScan : rawScans) scanSize += rawScan.points.size();
         // Zero ranges are not valid
         char*  valid  = new char[scanSize];
-        for (size_t i = 0; i < scanSize; ++i) {
-            if (rawScan.points[i].range != 0.0f) valid[i] = 1;
-            else valid[i] = 0;
-        }
-
-        // copy the vector elements into our new array
-        // NOTE: We may want to move this instead of copy for speed
         float* ranges = new float[scanSize];
-        std::transform(rawScan.points.begin(), rawScan.points.end(), ranges,
-                    [](const LaserPoint& lp){return lp.range;});
+	int scan_ind = 0;
+	for (const auto& rawScan : rawScans) {
+		for (size_t i = 0; i < rawScan.points.size(); ++i) {
+		    if (rawScan.points[i].range != 0.0f) valid[scan_ind] = 1;
+		    else valid[scan_ind] = 0;
+		    ranges[scan_ind] = rawScan.points[i].range;
+		    ++scan_ind;
+		}
+	}
 
         resultScan.loadFromVectors(scanSize, ranges, valid);
-        resultScan.aperture = M_PI*2; // This is a 360 deg lidar.
+        resultScan.aperture = M_PI*2*NUM_SCANS; // This is a 360 deg lidar.
 
         return resultScan;
     }
@@ -142,15 +145,19 @@ bool Lidar_MRPT::initialize() {
 }
 
 mrpt::obs::CObservation2DRangeScan Lidar_MRPT::scan() {
+	std::vector<LaserScan> all_scans;
     LaserScan CYscan;
-
-    if (!laser.doProcessSimple(CYscan)) {
-        fprintf(stderr, "Failed to get Lidar Data\n");
-        fflush(stderr);
-        return mrpt::obs::CObservation2DRangeScan(); //TODO switch this to optional or something
+    for (int i = 0; i < NUM_SCANS; ++i) {
+	    if (!laser.doProcessSimple(CYscan)) {
+		fprintf(stderr, "Failed to get Lidar Data\n");
+		fflush(stderr);
+		return mrpt::obs::CObservation2DRangeScan(); //TODO switch this to optional or something
+	    }
+	    all_scans.emplace_back(CYscan);
     }
 
-    return getMRPTRangeScanFromScanData(CYscan);
+
+    return getMRPTRangeScanFromScanData(all_scans);
 }
 
 

@@ -3,9 +3,7 @@ project(roomE)
 
 # NOTE: Add cpp files here:
 add_executable(${PROJECT_NAME} 
-	test_frontier.cpp
-    #test.cpp
-    # all_tests.cpp
+    main.cpp
     ArduinoSerial.cpp 
     Lidar_MRPT.cpp
     RoomeMap.cpp

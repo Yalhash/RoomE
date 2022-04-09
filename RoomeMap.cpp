@@ -14,8 +14,6 @@ RoomeMap::RoomeMap() {
     icp_map.ICP_params.smallestThresholdDist = 0.02f;
     icp_map.ICP_params.doRANSAC = true;
     icp_map.ICP_params.ICP_algorithm =mrpt::slam::icpClassic;
-    /* auto def = mrpt::maps::TMetricMapInitializer::factory("COccupancyGridMap2D"); */
-    /* auto def = mrpt::maps::TMetricMapInitializer::factory("COccupancyGridMap2D"); */
     mrpt::maps::TMetricMapInitializerPtr grid_def(mrpt::maps::COccupancyGridMap2D::MapDefinition());
     mrpt::maps::TMetricMapInitializerPtr points_def(mrpt::maps::CSimplePointsMap::MapDefinition());
     icp_map.ICP_options.mapInitializers.push_back(grid_def);

@@ -6,7 +6,7 @@
 #include <tuple>
 
 
-#define FREE_PROB 0.65 // Probably unoccupied
+#define FREE_PROB 0.65f // Probably unoccupied
 RoomeNav::RoomeNav() {
     planner.robotRadius = 0.30f; // RoomE is about 26 cm, rounding to 30 for safety.
     planner.occupancyThreshold = 0.49f; // Allow Roome to tranverse some unknown areas
@@ -82,7 +82,7 @@ namespace {
         //If this is a part of another frontier, or it is not unknown, it is not a point
         /* std::cout << "first: " << (frontier_pts.find(pt) != frontier_pts.end()) << " second: " << grid.getCell(pt.first, pt.second) << std::endl; */
 
-        if (frontier_pts.find(pt) != frontier_pts.end() || abs(grid.getCell(pt.first, pt.second)- 0.5) > 0.05) {
+        if (frontier_pts.find(pt) != frontier_pts.end() || std::abs(grid.getCell(pt.first, pt.second)- 0.5) > 0.05) {
             return false;
         }
 
