@@ -25,20 +25,21 @@ RoomeMap::RoomeMap() {
 
 void RoomeMap::initial_observation(const mrpt::obs::CObservation2DRangeScan& init_scan) {
     mrpt::poses::CPose2D init_pose(0, 0, M_PI/2);
+    mrpt::poses::CPose2D insert_pose(0, 0, M_PI/2);
     mrpt::maps::CSimpleMap c_map;
     mrpt::poses::CPosePDFGaussian pose_g2d(init_pose);
-    mrpt::poses::CPose3DPDF* pose_g3d = mrpt::poses::CPose3DPDF::createFrom2D(pose_g2d);
+    mrpt::poses::CPosePDFGaussian insert_p2d(insert_pose);
+    mrpt::poses::CPose3DPDF* insert_p3d = mrpt::poses::CPose3DPDF::createFrom2D(insert_p2d);
     mrpt::obs::CSensoryFrame s_frame;
     
     s_frame.push_back(mrpt::obs::CObservationPtr(init_scan.duplicateGetSmartPtr()));
 
-    c_map.insert(pose_g3d, s_frame);
+    c_map.insert(insert_p3d, s_frame);
     icp_map.initialize(c_map, &pose_g2d);
 }
 
 void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan,
                                   const mrpt::poses::CPose2D& pose_delta_approx) {
-    mrpt::maps::CSimpleMap c_map;
     mrpt::obs::CActionRobotMovement2D act_mov;
     act_mov.computeFromOdometry(pose_delta_approx, opts);
     act_mov.timestamp = mrpt::system::getCurrentTime();
@@ -68,7 +69,9 @@ mrpt::poses::CPose2D RoomeMap::get_pose() const {
 }
 
 mrpt::maps::COccupancyGridMap2D RoomeMap::get_grid_map() {
-    mrpt::maps::COccupancyGridMap2D grid;
+    // mrpt::maps::COccupancyGridMap2D grid;
+    mrpt::maps::COccupancyGridMap2D grid(-20.0f, 20.0f, -20.0f, 20.0f, 0.03);
+    // grid.subSample(7);
     mrpt::maps::CSimpleMap s_map;
 
     icp_map.getCurrentlyBuiltMap(s_map);

@@ -8,7 +8,7 @@
 
 #define FREE_PROB 0.65f // Probably unoccupied
 RoomeNav::RoomeNav() {
-    planner.robotRadius = 0.30f; // RoomE is about 26 cm, rounding to 30 for safety.
+    planner.robotRadius = 0.2; // RoomE is about 26 cm, rounding to 30 for safety.
     planner.occupancyThreshold = 0.49f; // Allow Roome to tranverse some unknown areas
 }
 
@@ -31,24 +31,25 @@ std::optional<std::deque<mrpt::math::TPoint2D>> RoomeNav::find_path(
 
     // Cut down on the number of points by only storing the points which are not straight lines from their previous point
     // Assume that the robot is about at the start point
-    mrpt::math::TPoint2D start_point(detailed_path[0]);
-    mrpt::math::TPoint2D curr_point(detailed_path[1]);
-    double slope = 0;
-    for (int i = 2; i < detailed_path.size(); ++i) {
-        // If the points are colinear we can skip past them, otherwise a new line is being added
-        if (abs((start_point.x - curr_point.x)*(curr_point.y - detailed_path[i].y)
-        - (curr_point.x - detailed_path[i].x)*(start_point.y - curr_point.y)) > 0.01) {
-            result_path.push_back(detailed_path[i-1]);
-            start_point = detailed_path[i-1];
-            curr_point = detailed_path[i];
-        } 
-        
-    }
+    //mrpt::math::TPoint2D start_point(detailed_path[0]);
+    //mrpt::math::TPoint2D curr_point(detailed_path[1]);
+    //double slope = 0;
+    //for (int i = 2; i < detailed_path.size(); ++i) {
+        //// If the points are colinear we can skip past them, otherwise a new line is being added
+        //if (abs((start_point.x - curr_point.x)*(curr_point.y - detailed_path[i].y)
+        //- (curr_point.x - detailed_path[i].x)*(start_point.y - curr_point.y)) > 0.01) {
+            //result_path.push_back(detailed_path[i-1]);
+            //start_point = detailed_path[i-1];
+            //curr_point = detailed_path[i];
+        //} 
+       // 
+    //}
+//
+    //result_path.push_back(detailed_path.back());
 
-    result_path.push_back(detailed_path.back());
 
-
-    return std::optional<std::deque<mrpt::math::TPoint2D>>{result_path};
+    return std::optional<std::deque<mrpt::math::TPoint2D>>{detailed_path};
+    //return std::optional<std::deque<mrpt::math::TPoint2D>>{result_path};
 }
 
 // Frontier Helper functions!

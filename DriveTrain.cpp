@@ -123,7 +123,7 @@ mrpt::poses::CPose2D DriveTrain::calculate_and_turn(mrpt::poses::CPose2D start, 
     auto Turn_odm_str = serial.read_string();
     std::cout << "Turn received: " << Turn_odm_str << std::endl;
 
-    //sleep(2); // Give enough time to come to a stop after moving
+    sleep(2); // Give enough time to come to a stop after moving
 
     
 
@@ -134,34 +134,42 @@ mrpt::poses::CPose2D DriveTrain::calculate_and_turn(mrpt::poses::CPose2D start, 
 
 
 
-
     double left_encoder_ticks = turn_odm_vector[0];
     double right_encoder_ticks = turn_odm_vector[1];
-    double distance_travel_left_wheel =  (left_encoder_ticks/20)* 0.3798318779;
-    double distance_travel_right_wheel =  (right_encoder_ticks/20)* 0.3798318779;
 
-    
-    double phi = (distance_travel_right_wheel - distance_travel_left_wheel )/ 0.25;
+    double phi;
+	if (travel_data[1] < 0){
+		phi = -((left_encoder_ticks)*(M_PI/2)*0.05);
+	}
+	else{
 
+		phi = ((right_encoder_ticks)*(M_PI/2)*0.05);
+	}
+	//calculate x and y changes as a result of turning
+    double c,phi_factor,theta,delta_x,delta_y;
 
-    double total_distance_travel = (distance_travel_left_wheel + distance_travel_right_wheel)*0.5;
-
-    double delta_x,delta_y;
-    if (phi != 0)
-    {
-        const double R = phi/total_distance_travel;
-        delta_x = R*sin(phi);
-        delta_y = R*(1 - cos(phi));
+    //phi factor to account for clockwise vs counter clockwise diff in calculations
+    if (phi >= 0 ){
+	phi_factor = 1;
     }
-    else
-    {
-        delta_x = total_distance_travel;
-        delta_y = 0;
+    else{
+        phi_factor = -1;
     }
 
-    movement_calculated = true;
+    c = sqrt(0.08 - 0.08*cos(phi*phi_factor));
+    theta = M_PI - (M_PI - (phi_factor*phi))/2 - acos(4/5);
+    delta_x = -phi_factor*c*sin(phi*phi_factor);
+    delta_y = c*cos(phi*phi_factor);
 
-    return mrpt::poses::CPose2D(delta_x, delta_y, phi); 
+	
+	
+	
+	
+	
+	movement_calculated = true;
+
+    std::cout << "turn movement is " <<  mrpt::poses::CPose2D(delta_x, delta_y, phi)<< std::endl; 
+     return mrpt::poses::CPose2D(delta_x,delta_y, phi); 
 }
 
 
@@ -170,7 +178,7 @@ mrpt::poses::CPose2D DriveTrain::post_scan_drive(){
     if (!movement_calculated){
         return mrpt::poses::CPose2D(0,0,0);
     }
-    std::cout << "send: " << data_send_arduino_stright << std::endl;
+    std::cout << "send: " << calculated_straight_movement << std::endl;
     serial.write_string(calculated_straight_movement);
 
 
@@ -202,8 +210,24 @@ mrpt::poses::CPose2D DriveTrain::post_scan_drive(){
         delta_y = 0;
     }
 
+    double c,phi_factor,theta;
+
+    //phi factor to account for clockwise vs counter clockwise diff in calculations
+    if (phi >= 0 ){
+	phi_factor = 1;
+    }
+    else{
+        phi_factor = -1;
+    }
+
+    c = sqrt(0.08 - 0.08*cos(phi*phi_factor));
+    theta = M_PI - (M_PI - (phi_factor*phi))/2 - acos(4/5);
+    delta_x += -phi_factor*c*sin(phi*phi_factor);
+    delta_y += c*cos(phi*phi_factor);
+
 
     movement_calculated = false;
 
+    std::cout << "movement is " <<  mrpt::poses::CPose2D(delta_x, delta_y, phi)<< std::endl; 
     return mrpt::poses::CPose2D(delta_x, delta_y, phi); 
 }
