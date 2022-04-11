@@ -25,10 +25,9 @@ RoomeMap::RoomeMap() {
 
 void RoomeMap::initial_observation(const mrpt::obs::CObservation2DRangeScan& init_scan) {
     mrpt::poses::CPose2D init_pose(0, 0, M_PI/2);
-    mrpt::poses::CPose2D insert_pose(0, 0, M_PI/2);
     mrpt::maps::CSimpleMap c_map;
     mrpt::poses::CPosePDFGaussian pose_g2d(init_pose);
-    mrpt::poses::CPosePDFGaussian insert_p2d(insert_pose);
+    mrpt::poses::CPosePDFGaussian insert_p2d(init_pose);
     mrpt::poses::CPose3DPDF* insert_p3d = mrpt::poses::CPose3DPDF::createFrom2D(insert_p2d);
     mrpt::obs::CSensoryFrame s_frame;
     

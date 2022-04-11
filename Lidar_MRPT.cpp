@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <cctype>
 
-#define NUM_SCANS 1
+#define NUM_SCANS 5
 
 
 // Helper functions
@@ -107,8 +107,17 @@ namespace {
         char*  valid  = new char[scanSize];
         float* ranges = new float[scanSize];
 	int scan_ind = 0;
+	// The lidar has its scan shifted a weird amount from where you would expect.
+	// At 0 degree initial pose: int shift = 397; // Found via experimentation
+	int shift = 277; // Found via experimentation
 	for (const auto& rawScan : rawScans) {
-		for (size_t i = 0; i < rawScan.points.size(); ++i) {
+		for (int i = shift; i < rawScan.points.size(); ++i) {
+		    if (rawScan.points[i].range != 0.0f) valid[scan_ind] = 1;
+		    else valid[scan_ind] = 0;
+		    ranges[scan_ind] = rawScan.points[i].range;
+		    ++scan_ind;
+		}
+		for (int i = 0; i < shift; ++i) {
 		    if (rawScan.points[i].range != 0.0f) valid[scan_ind] = 1;
 		    else valid[scan_ind] = 0;
 		    ranges[scan_ind] = rawScan.points[i].range;
@@ -118,6 +127,7 @@ namespace {
 
         resultScan.loadFromVectors(scanSize, ranges, valid);
         resultScan.aperture = M_PI*2*NUM_SCANS; // This is a 360 deg lidar.
+	resultScan.rightToLeft = false;
 
         return resultScan;
     }

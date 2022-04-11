@@ -24,6 +24,129 @@
 #include "DriveTrain.h"
 
 
+void add_frontier_info(mrpt::utils::CImage& img, 
+                       const std::vector<RoomeNav::Frontier>& fronts,
+                       const mrpt::maps::COccupancyGridMap2D& grid);
+
+void add_roome_position(mrpt::utils::CImage& img, 
+                        const mrpt::poses::CPose2D& roome_pose,
+                        const mrpt::maps::COccupancyGridMap2D& grid);
+
+void add_path_nodes(mrpt::utils::CImage& img,
+        const std::deque<mrpt::math::TPoint2D>& travel_path,
+        const mrpt::maps::COccupancyGridMap2D& grid);
+
+RoomeNav::Frontier find_nearest_frontier(const std::vector<RoomeNav::Frontier>& frontiers,
+                                         const RoomeMap& r_map);
+
+int main() {
+    Lidar_MRPT lidar;
+    if (!lidar.initialize()) {
+        printf("Lidar initialization failed! Exiting.");
+    }
+    RoomeMap r_map;
+    RoomeNav nav;
+    DriveTrain d_train;
+    std::string output_name;
+
+    // Insert the base observation
+    auto scan1 = lidar.scan();
+    // 0 Difference scan;
+    r_map.initial_observation(scan1);
+    int count = 0;
+
+	mrpt::utils::CImage img;
+    while (true) {
+        // Look for frontiers to move to
+        auto frontiers = nav.find_frontiers(r_map.get_grid_map(), r_map.get_pose());
+
+        if (frontiers.empty()) {
+            std::cout << "Couldn't find a next frontier" << count << "th" << std::endl;
+            break;
+        }
+	
+
+        // Pick frontiers giving priority to closest
+	    std::sort(frontiers.begin(), frontiers.end(), 
+            [&] (const RoomeNav::Frontier& f1, const RoomeNav::Frontier& f2) {
+                return r_map.get_pose().sqrDistanceTo(
+                    mrpt::poses::CPose2D(f1.centroid.x, f1.centroid.y, r_map.get_pose().phi())
+                    ) < r_map.get_pose().sqrDistanceTo(
+                    mrpt::poses::CPose2D(f2.centroid.x, f2.centroid.y, r_map.get_pose().phi())
+                    );
+        });
+
+        std::optional<std::deque<mrpt::math::TPoint2D>> travel_path;
+
+        // Find the closest reachable
+        for (auto& frontier : frontiers) {
+            auto next_point = frontier.centroid;
+            mrpt::poses::CPose2D next_roome_pose(next_point.x,next_point.y, r_map.get_pose().phi());
+            travel_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), next_roome_pose);
+            if (!travel_path) {
+                continue;
+            } else {
+                break;
+            }
+
+        }
+
+        // save scan
+        r_map.get_grid_map().getAsImage(img, false, true);
+	    add_frontier_info(img, frontiers,r_map.get_grid_map());
+        add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
+        if (travel_path) {
+            std::cout << "Path exists, Size: " << travel_path->size() << std::endl;
+            add_path_nodes(img,*travel_path, r_map.get_grid_map());
+        } else {
+            std::cout << "Couldn't find a path to any fontier, exiting." << std::endl;
+        }
+        output_name = "outputs/" + std::to_string(count++) + "_scan.jpg" ;
+        img.saveToFile(output_name);
+
+        // Stop if there is no path to any frontiers (We are done)
+        if (!travel_path) break;
+
+	int btw = 0;
+        mrpt::poses::CPose2D pose_delta;
+	std::string rand = "";
+        for (const auto& pt : *travel_path) {
+
+            // Check if the point is reachable:
+            mrpt::poses::CPose2D potential_pose(pt.x,pt.y, r_map.get_pose().phi());
+            auto next_point_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), potential_pose);
+
+            // Start over if the next point is unreachable
+            if (!next_point_path) break; 
+	    std::cout << "I see myself at: " << r_map.get_pose() << ", and i want to go to (" << pt.x << ", " << pt.y << ")" << std::endl;
+	    // std::cin >> rand;
+
+            // Move to point along the path,
+            pose_delta = d_train.calculate_and_turn(r_map.get_pose(), pt);
+
+            // scan and re-localize,
+            auto scan = lidar.scan();
+            r_map.insert_observation(scan, pose_delta);  
+
+            // Move forward to scan again
+            pose_delta = d_train.post_scan_drive();
+            scan = lidar.scan();
+            r_map.insert_observation(scan, pose_delta);  
+        r_map.get_grid_map().getAsImage(img, false, true);
+        add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
+        output_name = "outputs/" + std::to_string(count) + "_" + std::to_string(btw++) + "_scan.jpg" ;
+        img.saveToFile(output_name);
+        }
+        
+    }
+    // Save the final scan
+    r_map.get_grid_map().getAsImage(img, false, true);
+    add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
+    output_name = "outputs/final_scan.jpg";
+    img.saveToFile(output_name);
+    return 0;
+}
+
 void add_frontier_info(mrpt::utils::CImage& img, const std::vector<RoomeNav::Frontier>& fronts,
                        const mrpt::maps::COccupancyGridMap2D& grid) {
 
@@ -71,96 +194,4 @@ RoomeNav::Frontier find_nearest_frontier(const std::vector<RoomeNav::Frontier>& 
         }
 
         return frontiers[min_ind];
-}
-
-int main() {
-    Lidar_MRPT lidar;
-    if (!lidar.initialize()) {
-        printf("Lidar initialization failed! Exiting.");
-    }
-    RoomeMap r_map;
-    RoomeNav nav;
-    DriveTrain d_train;
-    std::string output_name;
-
-    // Insert the base observation
-    auto scan1 = lidar.scan();
-    // 0 Difference scan;
-    r_map.initial_observation(scan1);
-    int count = 0;
-
-	mrpt::utils::CImage img;
-    while (true) {
-        auto frontiers = nav.find_frontiers(r_map.get_grid_map(), r_map.get_pose());
-
-        if (frontiers.empty()) {
-            std::cout << "Couldn't find a next frontier" << count << "th" << std::endl;
-            break;
-        }
-	auto dist_to_roome = [&] (const RoomeNav::Frontier& f1, const RoomeNav::Frontier& f2) {
-		return r_map.get_pose().sqrDistanceTo(
-				mrpt::poses::CPose2D(f1.centroid.x, f1.centroid.y, r_map.get_pose().phi())
-				) < r_map.get_pose().sqrDistanceTo(
-				mrpt::poses::CPose2D(f2.centroid.x, f2.centroid.y, r_map.get_pose().phi())
-				);
-	};
-
-	std::sort(frontiers.begin(), frontiers.end(), dist_to_roome);
-
-        auto frontier = find_nearest_frontier(frontiers, r_map);
-	std::optional<std::deque<mrpt::math::TPoint2D>> travel_path;
-
-	for (auto& frontier : frontiers) {
-		auto next_point = frontier.centroid;
-		mrpt::poses::CPose2D next_roome_pose(next_point.x,next_point.y, r_map.get_pose().phi());
-		travel_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), next_roome_pose);
-		if (!travel_path) {
-			continue;
-		} else {
-			break;
-		}
-
-	}
-
-	r_map.get_grid_map().getAsImage(img, false, true);
-	if (frontiers.size() != 1) 
-	    add_frontier_info(img, frontiers,r_map.get_grid_map());
-	add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
-	if (travel_path) {
-	    std::cout << "Path exists, Size: " << travel_path->size() << std::endl;
-	    add_path_nodes(img,*travel_path, r_map.get_grid_map());
-	} else {
-	    std::cout << "Couldn't find a path to any fontier, exiting." << std::endl;
-	}
-	// save scan
-	output_name = "outputs/" + std::to_string(count++) + "_scan.jpg" ;
-	img.saveToFile(output_name);
-
-	if (!travel_path) break;
-
-        mrpt::poses::CPose2D pose_delta;
-        for (const auto& pt : *travel_path) {
-		// Check if the point is reachable:
-		mrpt::poses::CPose2D potential_pose(pt.x,pt.y, r_map.get_pose().phi());
-		auto next_point_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), potential_pose);
-		// The next point in the path is unreachable
-		if (!next_point_path) break; 
-            // Move to point along the path,
-            pose_delta = d_train.calculate_and_turn(r_map.get_pose(), pt);
-            // scan and re-localize,
-            auto scan = lidar.scan();
-            r_map.insert_observation(scan, pose_delta);  
-
-            // Move forward to scan again
-            pose_delta = d_train.post_scan_drive();
-            scan = lidar.scan();
-            r_map.insert_observation(scan, pose_delta);  
-        }
-        
-    }
-    r_map.get_grid_map().getAsImage(img, false, true);
-    add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
-    output_name = "outputs/final_scan.jpg";
-    img.saveToFile(output_name);
-    return 0;
 }
