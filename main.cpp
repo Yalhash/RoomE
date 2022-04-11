@@ -93,8 +93,7 @@ int main() {
 
         // save scan
         r_map.get_grid_map().getAsImage(img, false, true);
-        if (frontiers.size() != 1) 
-            add_frontier_info(img, frontiers,r_map.get_grid_map());
+	    add_frontier_info(img, frontiers,r_map.get_grid_map());
         add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
         if (travel_path) {
             std::cout << "Path exists, Size: " << travel_path->size() << std::endl;
@@ -108,7 +107,9 @@ int main() {
         // Stop if there is no path to any frontiers (We are done)
         if (!travel_path) break;
 
+	int btw = 0;
         mrpt::poses::CPose2D pose_delta;
+	std::string rand = "";
         for (const auto& pt : *travel_path) {
 
             // Check if the point is reachable:
@@ -117,6 +118,8 @@ int main() {
 
             // Start over if the next point is unreachable
             if (!next_point_path) break; 
+	    std::cout << "I see myself at: " << r_map.get_pose() << ", and i want to go to (" << pt.x << ", " << pt.y << ")" << std::endl;
+	    // std::cin >> rand;
 
             // Move to point along the path,
             pose_delta = d_train.calculate_and_turn(r_map.get_pose(), pt);
@@ -129,6 +132,10 @@ int main() {
             pose_delta = d_train.post_scan_drive();
             scan = lidar.scan();
             r_map.insert_observation(scan, pose_delta);  
+        r_map.get_grid_map().getAsImage(img, false, true);
+        add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
+        output_name = "outputs/" + std::to_string(count) + "_" + std::to_string(btw++) + "_scan.jpg" ;
+        img.saveToFile(output_name);
         }
         
     }
