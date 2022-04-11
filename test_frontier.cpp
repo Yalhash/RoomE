@@ -31,6 +31,10 @@ void add_path_nodes(mrpt::utils::CImage& img, const std::deque<mrpt::math::TPoin
     }
 }
 
+double get_new_ang(double curr_ang) {
+    return std::fmod(curr_ang + M_PI/20.0 , 2*M_PI);
+}
+
 RoomeNav::Frontier find_nearest_frontier(const std::vector<RoomeNav::Frontier>& frontiers, const RoomeMap& r_map) {
         // Find the closest point frontier
         int min_ind = 0;
@@ -58,7 +62,7 @@ int main() {
     RoomeMap r_map;
     RoomeNav nav;
     TestEnv env("assets/shapes.png");
-    mrpt::poses::CPose2D virtual_pose(0,0,M_PI/2);
+    mrpt::poses::CPose2D virtual_pose(0,0,0);
     env.update_pose(virtual_pose);
     if (!env.is_map_loaded()) {
         std::cout << "map did not load correctly" 
@@ -80,15 +84,30 @@ int main() {
             break;
         }
 
-        auto frontier = find_nearest_frontier(frontiers, r_map);
+        // Pick frontiers giving priority to closest
+	    std::sort(frontiers.begin(), frontiers.end(), 
+            [&] (const RoomeNav::Frontier& f1, const RoomeNav::Frontier& f2) {
+                return r_map.get_pose().sqrDistanceTo(
+                    mrpt::poses::CPose2D(f1.centroid.x, f1.centroid.y, r_map.get_pose().phi())
+                    ) < r_map.get_pose().sqrDistanceTo(
+                    mrpt::poses::CPose2D(f2.centroid.x, f2.centroid.y, r_map.get_pose().phi())
+                    );
+        });
 
-        auto next_point = frontier.centroid;
+        std::optional<std::deque<mrpt::math::TPoint2D>> travel_path;
 
+        // Find the closest reachable
+        for (auto& frontier : frontiers) {
+            auto next_point = frontier.centroid;
+            mrpt::poses::CPose2D next_roome_pose(next_point.x,next_point.y, r_map.get_pose().phi());
+            travel_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), next_roome_pose);
+            if (!travel_path) {
+                continue;
+            } else {
+                break;
+            }
 
-        mrpt::poses::CPose2D new_pose(next_point.x,next_point.y, virtual_pose.phi());
-        mrpt::poses::CPose2D next_roome_pose(next_point.x,next_point.y, r_map.get_pose().phi());
-
-        auto travel_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), next_roome_pose);
+        }
 
         mrpt::utils::CImage img;
         r_map.get_grid_map().getAsImage(img, false, true);
@@ -99,27 +118,46 @@ int main() {
             add_path_nodes(img,*travel_path, r_map.get_grid_map());
         } else {
             std::cout << "Couldn't find a path, exiting." << std::endl;
-            break;
         }
+
         // save scan
         output_name = "outputs/" + std::to_string(count++) + "_scan.jpg" ;
         img.saveToFile(output_name);
 
+        if (!travel_path) break;
 
 
-        mrpt::poses::CPose2D pose_delta;
+
+        int btw = 0;
+        double curr_ang = 0.0;
         for (const auto& pt : *travel_path) {
             // Move to point, and get new pose:
-            mrpt::poses::CPose2D new_pose(pt.x, pt.y, r_map.get_pose().phi());
-            pose_delta = new_pose - r_map.get_pose();
+            mrpt::poses::CPose2D new_pose(pt.x, pt.y, curr_ang);
+            curr_ang =  get_new_ang(curr_ang);
+
+            // Check if the point is reachable:
+            auto next_point_path = nav.find_path(r_map.get_grid_map(), r_map.get_pose(), new_pose);
+            // Start over if the next point is unreachable
+            if (!next_point_path) break; 
+
+            auto roome_pose = r_map.get_pose();
+
+            mrpt::poses::CPose2D pose_delta = new_pose - roome_pose;
+//            mrpt::poses::CPose2D pose_delta(new_pose.m_coords[0] - roome_pose.m_coords[0], 
+//                                            new_pose.m_coords[1] - roome_pose.m_coords[1],
+//                                            new_pose.phi() - roome_pose.phi());
+
             virtual_pose = new_pose;
             env.update_pose(virtual_pose);
             auto scan = env.scan();
             r_map.insert_observation(scan, pose_delta);  
+            mrpt::poses::CPose2D potential_pose(pt.x,pt.y, r_map.get_pose().phi());
+            r_map.get_grid_map().getAsImage(img, false, true);
+            add_roome_position(img, r_map.get_pose(), r_map.get_grid_map());
+            output_name = "outputs/" + std::to_string(count) + "_" + std::to_string(btw++) + "_scan.jpg";
+            img.saveToFile(output_name);
         }
 
-        /* std::cout << "Want to move " << pose_delta << std::endl; */
-        
     }
     mrpt::utils::CImage img;
     r_map.get_grid_map().getAsImage(img, false, true);
