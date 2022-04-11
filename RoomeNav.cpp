@@ -6,10 +6,11 @@
 #include <tuple>
 
 
-#define FREE_PROB 0.65 // Probably unoccupied
+#define FREE_PROB 0.65f // Probably unoccupied
 RoomeNav::RoomeNav() {
-    planner.robotRadius = 0.30f; // RoomE is about 26 cm, rounding to 30 for safety.
+    planner.robotRadius = 0.3; // RoomE is about 26 cm, rounding to 30 for safety.
     planner.occupancyThreshold = 0.49f; // Allow Roome to tranverse some unknown areas
+    planner.minStepInReturnedPath = 0.5f; // Force the minimum movement length to be half a metre
 }
 
 std::optional<std::deque<mrpt::math::TPoint2D>> RoomeNav::find_path(
@@ -31,24 +32,29 @@ std::optional<std::deque<mrpt::math::TPoint2D>> RoomeNav::find_path(
 
     // Cut down on the number of points by only storing the points which are not straight lines from their previous point
     // Assume that the robot is about at the start point
-    mrpt::math::TPoint2D start_point(detailed_path[0]);
-    mrpt::math::TPoint2D curr_point(detailed_path[1]);
-    double slope = 0;
-    for (int i = 2; i < detailed_path.size(); ++i) {
-        // If the points are colinear we can skip past them, otherwise a new line is being added
-        if (abs((start_point.x - curr_point.x)*(curr_point.y - detailed_path[i].y)
-        - (curr_point.x - detailed_path[i].x)*(start_point.y - curr_point.y)) > 0.01) {
-            result_path.push_back(detailed_path[i-1]);
-            start_point = detailed_path[i-1];
-            curr_point = detailed_path[i];
-        } 
-        
-    }
+    //mrpt::math::TPoint2D start_point(detailed_path[0]);
+    //mrpt::math::TPoint2D curr_point(detailed_path[1]);
+    //double slope = 0;
+    //for (int i = 2; i < detailed_path.size(); ++i) {
+        //// If the points are colinear we can skip past them
+        //// But we don't want to skip past too many points, so put a cap at 2 m distances
+        //// , otherwise a new line is being added
+        //if (std::abs((start_point.x - curr_point.x)*(curr_point.y - detailed_path[i].y)
+         //- (curr_point.x - detailed_path[i].x)*(start_point.y - curr_point.y)) < 0.01
+          //|| (std::sqrt((start_point.x - detailed_path[i].x)*(start_point.x - detailed_path[i].x)
+                      //+ (start_point.y - detailed_path[i].y)*(start_point.y - detailed_path[i].y)) > 3
+            //)) {
+            //result_path.push_back(detailed_path[i-1]);
+            //start_point = detailed_path[i-1];
+            //curr_point = detailed_path[i];
+        //} 
+    //}
+//
+    //result_path.push_back(detailed_path.back());
 
-    result_path.push_back(detailed_path.back());
 
-
-    return std::optional<std::deque<mrpt::math::TPoint2D>>{result_path};
+    return std::optional<std::deque<mrpt::math::TPoint2D>>{detailed_path};
+    // return std::optional<std::deque<mrpt::math::TPoint2D>>{result_path};
 }
 
 // Frontier Helper functions!
@@ -82,7 +88,7 @@ namespace {
         //If this is a part of another frontier, or it is not unknown, it is not a point
         /* std::cout << "first: " << (frontier_pts.find(pt) != frontier_pts.end()) << " second: " << grid.getCell(pt.first, pt.second) << std::endl; */
 
-        if (frontier_pts.find(pt) != frontier_pts.end() || abs(grid.getCell(pt.first, pt.second)- 0.5) > 0.05) {
+        if (frontier_pts.find(pt) != frontier_pts.end() || std::abs(grid.getCell(pt.first, pt.second)- 0.5) > 0.05) {
             return false;
         }
 
@@ -151,8 +157,7 @@ std::vector<RoomeNav::Frontier> RoomeNav::find_frontiers(
         const mrpt::maps::COccupancyGridMap2D& grid,
         const mrpt::poses::CPose2D& start) {
 
-    // NOTE: maybe change this to something higher if need be
-    constexpr unsigned int min_front_size = 200; // Don't pay attention to noise
+    unsigned int min_front_size = 50; // Don't pay attention to noise
 
     std::vector<RoomeNav::Frontier> frontiers;
     auto start_p = std::make_pair(grid.x2idx(start.m_coords[0]), grid.y2idx(start.m_coords[1]));
@@ -162,7 +167,6 @@ std::vector<RoomeNav::Frontier> RoomeNav::find_frontiers(
     std::set<std::pair<int,int>> frontier_pts;
 
     que.push_back(start_p);
-    /* std::cout << "Finding frontiers!" << std::endl; */
     while (!que.empty()) {
         auto p = que.front();
         que.pop_front();

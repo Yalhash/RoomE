@@ -17,14 +17,21 @@ public:
     // Tear down the serial
     ~DriveTrain();
 
-    // Move RoomE from the start pose to the finish point. 
-    // return the left and right wheel odometry info.
-    // (Note, maybe this should return the approximate new pose.
-    mrpt::poses::CPose2D move(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish);
+    //calculates the required turn and drive vectors and then turns. 
+    //Returns the approximate change in x,y,phi based on odometry info
+    //Call post_scan_drive() afterwards to move the calculated amount
+    mrpt::poses::CPose2D calculate_and_turn(mrpt::poses::CPose2D start, mrpt::math::TPoint2D finish);
+
+    // Moves the roome straight by the previously calculated amount. 
+    // Returns the approximate change in x,y,phi based on odometry info
+    // can only be called after calculate_and_turn has been run
+    mrpt::poses::CPose2D post_scan_drive();
 
 private:
     ArduinoSerial serial;
     friend RoomeTest;
+    std::string calculated_straight_movement;
+    bool movement_calculated;
 };
 
 #endif

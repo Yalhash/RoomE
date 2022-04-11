@@ -2,9 +2,10 @@
 #define ROOME_MAP_H
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
-#include <mrpt/slam/CICP.h>
+#include <mrpt/slam/CMetricMapBuilderICP.h>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,7 @@ class RoomeMap {
 public:
     RoomeMap();
 
+    void initial_observation(const mrpt::obs::CObservation2DRangeScan& init_scan);
     // Insert the observation and correct the pose approximation
     void insert_observation(const mrpt::obs::CObservation2DRangeScan& scan,
                             const mrpt::poses::CPose2D& pose_delta_approx);
@@ -22,15 +24,11 @@ public:
     mrpt::poses::CPose2D get_pose() const;
 
     mrpt::maps::COccupancyGridMap2D get_grid_map();
-    void save_point(double x, double y);
+    mrpt::maps::CSimplePointsMap get_points_map();
 
 private:
-    mrpt::poses::CPose2D current_pose;
-    mrpt::slam::CICP ICP;
-    mrpt::slam::CICP::TReturnInfo info;
-    mrpt::maps::CSimplePointsMap running_map;
-    mrpt::maps::COccupancyGridMap2D running_grid;
-    std::vector<std::pair<double,double>> saved_points;
+    mrpt::slam::CMetricMapBuilderICP icp_map;
+    mrpt::obs::CActionRobotMovement2D::TMotionModelOptions opts;
 };
 
 #endif

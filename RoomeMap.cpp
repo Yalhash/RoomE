@@ -1,89 +1,89 @@
 #include "RoomeMap.h"
-#include <mrpt/poses/CPosePDF.h>
+#include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/CPose3D.h>
+#include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
+#include <mrpt/obs/CSensoryFrame.h>
 
 RoomeMap::RoomeMap() {
-    current_pose = mrpt::poses::CPose2D(0.0f,0.0f,0);
-    //running_map.changeCoordinatesReference(current_pose);
-    // TODO: update in insert_observation based on how much we've moved
-    ICP.options.maxIterations = 100;
-    ICP.options.thresholdAng = mrpt::utils::DEG2RAD(10.0f);
-    ICP.options.thresholdDist = 0.75f;
-    ICP.options.ALFA = 0.5f;
-    ICP.options.smallestThresholdDist = 0.02f;
-    ICP.options.doRANSAC = true;
-    ICP.options.ICP_algorithm =mrpt::slam::icpLevenbergMarquardt;// mrpt::slam::icpClassic;
+    // ICP options
+    icp_map.ICP_params.maxIterations = 100;
+    icp_map.ICP_params.thresholdAng = mrpt::utils::DEG2RAD(10.0f);
+    icp_map.ICP_params.thresholdDist = 0.75f;
+    icp_map.ICP_params.ALFA = 0.5f;
+    icp_map.ICP_params.smallestThresholdDist = 0.02f;
+    icp_map.ICP_params.doRANSAC = true;
+    icp_map.ICP_params.ICP_algorithm =mrpt::slam::icpClassic;
+    mrpt::maps::TMetricMapInitializerPtr grid_def(mrpt::maps::COccupancyGridMap2D::MapDefinition());
+    mrpt::maps::TMetricMapInitializerPtr points_def(mrpt::maps::CSimplePointsMap::MapDefinition());
+    icp_map.ICP_options.mapInitializers.push_back(grid_def);
+    icp_map.ICP_options.mapInitializers.push_back(points_def);
+
+    // Movement model options (Treat our error as a guassian)
+    opts.modelSelection = mrpt::obs::CActionRobotMovement2D::mmGaussian;
+}
+
+void RoomeMap::initial_observation(const mrpt::obs::CObservation2DRangeScan& init_scan) {
+    mrpt::poses::CPose2D init_pose(0, 0, M_PI/2);
+    mrpt::maps::CSimpleMap c_map;
+    mrpt::poses::CPosePDFGaussian pose_g2d(init_pose);
+    mrpt::poses::CPosePDFGaussian insert_p2d(init_pose);
+    mrpt::poses::CPose3DPDF* insert_p3d = mrpt::poses::CPose3DPDF::createFrom2D(insert_p2d);
+    mrpt::obs::CSensoryFrame s_frame;
+    
+    s_frame.push_back(mrpt::obs::CObservationPtr(init_scan.duplicateGetSmartPtr()));
+
+    c_map.insert(insert_p3d, s_frame);
+    icp_map.initialize(c_map, &pose_g2d);
 }
 
 void RoomeMap::insert_observation(const mrpt::obs::CObservation2DRangeScan& scan,
                                   const mrpt::poses::CPose2D& pose_delta_approx) {
+    mrpt::obs::CActionRobotMovement2D act_mov;
+    act_mov.computeFromOdometry(pose_delta_approx, opts);
+    act_mov.timestamp = mrpt::system::getCurrentTime();
 
-    //update current pose to where we approximately are based on odometry values
-    current_pose = mrpt::poses::CPose2D(current_pose.m_coords[0] + pose_delta_approx.m_coords[0], 
-                                        current_pose.m_coords[1] + pose_delta_approx.m_coords[1],
-                                        current_pose.phi() + pose_delta_approx.phi());
-    current_pose.normalizePhi();
-
-    //Create map to represent current scan, and change its frame of reference to the updated current_pose (approximately where it was taken from)
-    mrpt::maps::CSimplePointsMap curr_map;
-    curr_map.insertObservation(&scan);
-    curr_map.changeCoordinatesReference(current_pose);
+    mrpt::obs::CSensoryFrame observation;
     
+    observation.push_back(mrpt::obs::CObservationPtr(scan.duplicateGetSmartPtr()));
 
-    //NOTE: may want run info in future to check goodness etc.
-    //Calculate the error for joining the two maps
-    mrpt::poses::CPosePDF::Ptr pdf = ICP.Align(
-            &curr_map,
-            &running_map, 
-            mrpt::poses::CPose2D(0,0,0), 
-            nullptr, // runtime
-            &info); // run info 
-
-    
-    auto mean_pose = pdf->getMeanVal(); 
-
-    //change the incoming map based on icp result
-    curr_map.changeCoordinatesReference(mean_pose);
-    running_map.fuseWith(&curr_map);
-
-    //push info into the running grid
-    mrpt::poses::CPose3D current_3D(current_pose);
-    running_grid.insertObservation(&scan,&current_3D);
-
-    
-
+    mrpt::obs::CActionCollection action(act_mov);
+    icp_map.processActionObservation(action, observation);
 }
 
 
 void RoomeMap::save_points_to_file(const std::string& filename) { 
-    running_map.save2D_to_text_file(filename+".txt");
+    get_points_map().save2D_to_text_file(filename+".txt");
 }
 
 void RoomeMap::save_grid_to_file(const std::string& filename) { 
-
-
-    for (auto& p : saved_points) {
-        int x = running_grid.x2idx(p.first);
-        int y = running_grid.y2idx(p.second);
-        for (int i = -10; i <= 10; ++i) {
-            for (int j = -10; j <= 10; ++j) {
-                running_grid.updateCell(x + i, y + j,0);
-            }
-        }
-    }
-    running_grid.saveAsBitmapFile(filename + ".bmp");
+    get_grid_map().saveAsBitmapFile(filename + ".bmp");
 }
 
 
 mrpt::poses::CPose2D RoomeMap::get_pose() const {
-    return current_pose; 
+    mrpt::poses::CPose3DPDFPtr pose_pdf_3d = icp_map.getCurrentPoseEstimation(); 
+    auto pose_3d =  pose_pdf_3d->getMeanVal();
+    return mrpt::poses::CPose2D(pose_3d.m_coords[0], pose_3d.m_coords[1], pose_3d.yaw());
 }
 
 mrpt::maps::COccupancyGridMap2D RoomeMap::get_grid_map() {
-    return running_grid;
+    // mrpt::maps::COccupancyGridMap2D grid;
+    mrpt::maps::COccupancyGridMap2D grid(-20.0f, 20.0f, -20.0f, 20.0f, 0.03);
+    // grid.subSample(7);
+    mrpt::maps::CSimpleMap s_map;
+
+    icp_map.getCurrentlyBuiltMap(s_map);
+    grid.loadFromProbabilisticPosesAndObservations(s_map);
+    return grid;
 }
 
-void RoomeMap::save_point(double x, double y) {
-    saved_points.emplace_back(std::make_pair(x, y));
+mrpt::maps::CSimplePointsMap RoomeMap::get_points_map() {
+    mrpt::maps::CSimplePointsMap points;
+    mrpt::maps::CSimpleMap s_map;
+
+    icp_map.getCurrentlyBuiltMap(s_map);
+    points.loadFromProbabilisticPosesAndObservations(s_map);
+    return points;
+
 }
